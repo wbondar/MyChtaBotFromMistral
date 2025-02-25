@@ -8,10 +8,10 @@ RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver 
 
-# Получаем последнюю версию ChromeDriver
-RUN CHROMEDRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | \
-    grep -o '"linux64".*?https://[^"]*' | head -1 | cut -d '"' -f 4) && \
-    wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_VERSION" && \
+# Получаем последнюю стабильную версию ChromeDriver
+RUN LATEST_CHROMEDRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | \
+    grep -o '"version": *"[^"]*' | head -1 | cut -d '"' -f 4) && \
+    wget -O /tmp/chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/${LATEST_CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
