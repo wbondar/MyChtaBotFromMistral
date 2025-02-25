@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     chromium \
     unzip \
     wget \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем ChromeDriver
