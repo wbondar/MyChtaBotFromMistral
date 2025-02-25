@@ -10,9 +10,10 @@ RUN apt-get update && apt-get install -y \
     jq
 
 # Получаем последнюю доступную версию ChromeDriver
-RUN CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/latest-patch-versions-per-build.json | \
-    jq -r '.["stable"]' | \
-    awk '{print "https://storage.googleapis.com/chrome-for-testing-public/" $1 "/linux64/chromedriver-linux64.zip"}') && \
+RUN LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | \
+    jq -r '.channels.Stable.version') && \
+    CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | \
+    jq -r --arg ver "$LATEST_VERSION" '.versions[] | select(.version == $ver) | .downloads.chromeDriver[] | select(.platform=="linux64") | .url') && \
     wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
