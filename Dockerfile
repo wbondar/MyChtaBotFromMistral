@@ -1,30 +1,42 @@
-# Используем официальный образ Python из Docker Hub
+# Используем минимальный образ Python
 FROM python:3.11-slim
 
 # Устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
-    unzip \
+    fonts-liberation \
+    libappindicator3-1 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libnspr4 \
+    libnss3 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    xdg-utils \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем ChromeDriver
-RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
+# Устанавливаем ChromeDriver с фиксированной версией
+RUN wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/115.0.5790.102/chromedriver_linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
-# Устанавливаем Python-зависимости
-COPY requirements.txt requirements.txt
+# Копируем зависимости Python
+COPY requirements.txt /app/requirements.txt
+WORKDIR /app
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем ваш код в контейнер
+# Копируем код приложения
 COPY . /app
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
-
-# Команда для запуска вашего приложения
+# Указываем команду для запуска
 CMD ["python", "main.py"]
