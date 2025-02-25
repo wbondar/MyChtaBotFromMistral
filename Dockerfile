@@ -1,32 +1,36 @@
-# Используем базовый образ с Python
+# Используем официальный образ Python из Docker Hub
 FROM python:3.11-slim
 
-# Устанавливаем необходимые зависимости
+# Устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
-    curl \
+    chromium \
+    chromium-driver \
     unzip \
-    jq \
     wget \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем последнюю стабильную версию ChromeDriver
-RUN LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | jq -r '.versions | .[0].version') && \
-    echo "Latest version: $LATEST_VERSION" && \
-    CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | \
-    jq -r --arg ver "$LATEST_VERSION" '.versions[] | select(.version == $ver) | .downloads.chromeDriver[] | select(.platform=="linux64") | .url') && \
-    echo "ChromeDriver URL: $CHROMEDRIVER_URL" && \
-    wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL" && \
+# Устанавливаем ChromeDriver
+RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
+    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
-# Устанавливаем зависимость Python для Selenium
-RUN pip install selenium
+# Устанавливаем Python-зависимости
+COPY requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
+# Проверяем версии Chromium и ChromeDriver
+RUN chromium --version && \
+    chromedriver --version && \
+    which chromium && \
+    which chromedriver
 
 # Копируем ваш код в контейнер
 COPY . /app
 
-# Команда для запуска вашего приложения (замените на вашу основную команду)
-CMD ["python", "your_script.py"]
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Команда для запуска вашего приложения
+CMD ["python", "main.py"]
