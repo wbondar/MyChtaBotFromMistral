@@ -1,29 +1,31 @@
-# Используем Python 3.10 в качестве базового образа
-FROM python:3.10
+# Используем базовый образ с Python 3.11
+FROM python:3.11-slim
 
-# Устанавливаем зависимости
+# Устанавливаем необходимые зависимости
 RUN apt-get update && apt-get install -y \
     curl \
+    jq \
     unzip \
-    chromium \
-    chromium-driver \
-    jq
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# Получаем последнюю доступную версию ChromeDriver и скачиваем его
-RUN CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | \
-    jq -r '.versions[-1].downloads.chromeDriver[] | select(.platform=="linux64") | .url') && \
+# Получаем последнюю версию ChromeDriver
+RUN LATEST_VERSION=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | jq -r '.versions | .[0].version') && \
+    CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | jq -r --arg ver "$LATEST_VERSION" '.versions[] | select(.version == $ver) | .downloads.chromeDriver[] | select(.platform=="linux64") | .url') && \
     wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
-# Создаем рабочую директорию
+# Копируем requirements.txt и устанавливаем зависимости
+COPY requirements.txt /app/requirements.txt
 WORKDIR /app
-
-# Копируем файлы проекта
-COPY . .
-
-# Устанавливаем зависимости из requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Запускаем приложение
+# Копируем весь код проекта
+COPY . /app
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Команда для запуска вашего приложения
 CMD ["python", "main.py"]
