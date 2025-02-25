@@ -20,10 +20,10 @@ options = webdriver.ChromeOptions()
 options.add_argument('--headless')  # Запуск в фоновом режиме
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.binary_location = '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium'  # Укажите правильный путь к Chromium
+options.binary_location = '/usr/bin/chromium'  # Укажите правильный путь к Chromium
 
 # Укажите правильный путь к ChromeDriver
-chrome_driver_path = '/nix/store/3qnxr5x6gw3k9a9i7d0akz0m6bksbwff-chromedriver-125.0.6422.141/bin/chromedriver'
+chrome_driver_path = '/usr/local/bin/chromedriver'
 
 # Инициализация веб-драйвера
 service = Service(executable_path=chrome_driver_path)
@@ -82,7 +82,7 @@ def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     schedule.every().saturday.at("22:00").do(send_scheduled_message, context, chat_id, "Хватит маяться! Спать пора уже!")
     schedule.every().sunday.at("22:00").do(send_scheduled_message, context, chat_id, "Хватит маяться! Спать пора уже!")
 
-    # Случайные сообщения
+    # Случайные сообщения каждый час с 09:00 до 21:00
     for hour in range(9, 22):
         schedule.every().day.at(f"{hour:02}:00").do(send_random_message, context, chat_id)
 
