@@ -4,15 +4,14 @@ FROM python:3.10
 # Устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
     curl \
-    jq \
     unzip \
     chromium \
     chromium-driver 
 
-# Загружаем и устанавливаем последнюю версию ChromeDriver
-RUN LATEST_CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | \
-    jq -r '.channels.Stable.downloads.chromeDriver[] | select(.platform=="linux64") | .url') && \
-    wget -O /tmp/chromedriver.zip "$LATEST_CHROMEDRIVER_URL" && \
+# Получаем последнюю версию ChromeDriver
+RUN CHROMEDRIVER_VERSION=$(curl -sS https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json | \
+    grep -o '"linux64".*?https://[^"]*' | head -1 | cut -d '"' -f 4) && \
+    wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_VERSION" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
