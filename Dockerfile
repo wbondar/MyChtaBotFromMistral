@@ -6,7 +6,13 @@ RUN apt-get update && apt-get install -y \
     chromium-driver \
     chromium \
     unzip \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Устанавливаем ChromeDriver
+RUN wget -O /usr/local/bin/chromedriver https://chromedriver.storage.googleapis.com/`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE`/chromedriver_linux64.zip \
+    && unzip /usr/local/bin/chromedriver -d /usr/local/bin/ \
+    && rm /usr/local/bin/chromedriver.zip
 
 # Устанавливаем Python-зависимости
 COPY requirements.txt requirements.txt
