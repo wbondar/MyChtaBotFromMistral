@@ -1,42 +1,29 @@
-# Используем минимальный образ Python
-FROM python:3.11-slim
+# Используем Python 3.10 в качестве базового образа
+FROM python:3.10
 
 # Устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-driver \
-    fonts-liberation \
-    libappindicator3-1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libnspr4 \
-    libnss3 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    xdg-utils \
-    wget \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    jq \
+    unzip \
+    chromium \
+    chromium-driver 
 
-# Устанавливаем ChromeDriver с фиксированной версией
-RUN wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/115.0.5790.102/chromedriver_linux64.zip && \
+# Загружаем и устанавливаем последнюю версию ChromeDriver
+RUN LATEST_CHROMEDRIVER_URL=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json | \
+    jq -r '.channels.Stable.downloads.chromeDriver[] | select(.platform=="linux64") | .url') && \
+    wget -O /tmp/chromedriver.zip "$LATEST_CHROMEDRIVER_URL" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
-# Копируем зависимости Python
-COPY requirements.txt /app/requirements.txt
+# Создаем рабочую директорию
 WORKDIR /app
+
+# Копируем файлы проекта
+COPY . .
+
+# Устанавливаем зависимости из requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем код приложения
-COPY . /app
-
-# Указываем команду для запуска
+# Запускаем приложение
 CMD ["python", "main.py"]
