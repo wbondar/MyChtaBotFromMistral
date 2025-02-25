@@ -3,8 +3,8 @@ FROM python:3.11-slim
 
 # Устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
-    chromium-driver \
     chromium \
+    chromium-driver \
     unzip \
     wget \
     curl \
