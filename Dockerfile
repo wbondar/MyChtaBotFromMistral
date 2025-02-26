@@ -22,7 +22,7 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем ChromeDriver
-RUN CHROMEDRIVER_VERSION=114.0.5735.90 && \
+RUN CHROMEDRIVER_VERSION=133.0.6943.141 && \
     wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
