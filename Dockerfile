@@ -3,15 +3,10 @@ FROM python:3.11-slim
 
 # Устанавливаем зависимости
 RUN apt-get update && apt-get install -y \
-    chromium \
-    chromium-driver \
-    unzip \
     wget \
     curl \
+    unzip \
     gnupg \
-    && apt-get remove -y chromium chromium-driver \
-    && apt-get autoremove -y \
-    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем Google Chrome
@@ -21,9 +16,8 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем последнюю версию ChromeDriver
-RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-    wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
+# Устанавливаем ChromeDriver версии 133.0.6943.141
+RUN wget -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/133.0.6943.141/linux64/chromedriver-linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     rm /tmp/chromedriver.zip
 
