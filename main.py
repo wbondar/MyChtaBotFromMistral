@@ -20,7 +20,7 @@ options = webdriver.ChromeOptions()
 options.add_argument('--headless')  # Запуск в фоновом режиме
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.binary_location = '/usr/bin/chromium'  # Укажите правильный путь к Chromium
+options.binary_location = '/usr/bin/google-chrome'  # Укажите правильный путь к Google Chrome
 
 # Укажите правильный путь к ChromeDriver
 chrome_driver_path = '/usr/local/bin/chromedriver'
