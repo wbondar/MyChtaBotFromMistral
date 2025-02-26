@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     wget \
     curl \
+    gnupg \
     && apt-get remove -y chromium chromium-driver \
     && apt-get autoremove -y \
     && apt-get clean \
