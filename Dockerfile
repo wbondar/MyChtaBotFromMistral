@@ -20,7 +20,8 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
 # Устанавливаем ChromeDriver версии 125.0.6422.141
 RUN wget -O /tmp/chromedriver.zip https://storage.googleapis.com/chrome-for-testing-public/125.0.6422.141/linux64/chromedriver-linux64.zip && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    rm /tmp/chromedriver.zip
+    rm /tmp/chromedriver.zip && \
+    chmod +x /usr/local/bin/chromedriver
 
 # Устанавливаем Python-зависимости
 COPY requirements.txt requirements.txt
