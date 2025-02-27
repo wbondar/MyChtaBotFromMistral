@@ -15,20 +15,19 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 # URL сайта
 SITE_URL = 'https://trychatgpt.ru'
 
-# Настройка веб-драйвера (например, для Chromium)
+# Настройка веб-драйвера (например, для Chrome)
 options = webdriver.ChromeOptions()
 options.add_argument('--headless')  # Запуск в фоновом режиме
 options.add_argument('--no-sandbox')
 options.add_argument('--disable-dev-shm-usage')
-options.binary_location = '/usr/bin/chromium'  # Укажите правильный путь к Chromium
+options.binary_location = '/usr/bin/google-chrome'  # Укажите правильный путь к Google Chrome
 
 # Укажите правильный путь к ChromeDriver
 chrome_driver_path = '/usr/local/bin/chromedriver'
 
 # Инициализация веб-драйвера
 service = Service(executable_path=chrome_driver_path)
-service.start()
-driver = webdriver.Remote(service.service_url, options=options)
+driver = webdriver.Chrome(service=service, options=options)
 
 # Список случайных фраз
 random_phrases = [
