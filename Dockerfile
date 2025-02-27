@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     gnupg \
+    && apt-get remove -y google-chrome-stable chromium-driver \
+    && apt-get autoremove -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
