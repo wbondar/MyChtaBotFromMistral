@@ -94,6 +94,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         chat_history[chat_id].pop(0)
 
     async with async_playwright() as p:
+        browser = None
         try:
             print("Запуск браузера...")
             browser = await p.firefox.launch()
@@ -145,8 +146,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text(f"Произошла ошибка: {str(e)}")
 
         finally:
-            await browser.close()
-            print("Браузер закрыт.")
+            if browser:
+                await browser.close()
+                print("Браузер закрыт.")
 
 def main() -> None:
     # Создаем приложение и передаем ему токен вашего бота
