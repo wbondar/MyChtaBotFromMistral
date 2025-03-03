@@ -1,33 +1,20 @@
 import os
-import random as rand  # Используем alias для модуля random
+import random as rand
 import schedule
 import time
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
+from playwright.async_api import async_playwright
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения
+load_dotenv()
 
 # Ваш токен Telegram-бота
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # URL сайта
 SITE_URL = 'https://trychatgpt.ru'
-
-# Настройка веб-драйвера (например, для Chrome)
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')  # Запуск в фоновом режиме
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.binary_location = '/usr/bin/google-chrome'  # Укажите правильный путь к Google Chrome
-
-# Укажите правильный путь к ChromeDriver
-chrome_driver_path = '/usr/local/bin/chromedriver'
-
-# Инициализация веб-драйвера
-service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service, options=options)
 
 # Список случайных фраз
 random_phrases = [
@@ -54,7 +41,7 @@ async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: s
 
 # Функция для отправки случайного сообщения
 async def send_random_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
-    message = rand.choice(random_phrases)  # Используем alias rand
+    message = rand.choice(random_phrases)
     await send_message(context, chat_id, message)
 
 # Функция для отправки постоянного сообщения
@@ -82,7 +69,7 @@ def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     schedule.every().saturday.at("22:00").do(send_scheduled_message, context, chat_id, "Хватит маяться! Спать пора уже!")
     schedule.every().sunday.at("22:00").do(send_scheduled_message, context, chat_id, "Хватит маяться! Спать пора уже!")
 
-    # Случайные сообщения каждый час с 09:00 до 21:00
+    # Случайные сообщения
     for hour in range(9, 22):
         schedule.every().day.at(f"{hour:02}:00").do(send_random_message, context, chat_id)
 
@@ -106,49 +93,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if len(chat_history[chat_id]) > 20:
         chat_history[chat_id].pop(0)
 
-    try:
-        # Открываем сайт
-        driver.get(SITE_URL)
-        time.sleep(5)  # Даем время на загрузку страницы
-        print("Сайт загружен")
+    async with async_playwright() as p:
+        try:
+            print("Запуск браузера...")
+            browser = await p.firefox.launch()
+            print("Браузер запущен.")
+            page = await browser.new_page()
+            print("Создана новая страница.")
 
-        # Проверка, что страница полностью загружена
-        if "ChatGPT" not in driver.page_source:
-            raise Exception("Страница не загружена корректно.")
-        print("Страница загружена корректно")
+            print(f"Переход на {SITE_URL}...")
+            await page.goto(SITE_URL, timeout=60000)  # Увеличиваем таймаут до 60 секунд
+            print("Страница загружена.")
 
-        # Находим поле ввода и отправляем сообщение
-        input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')  # Обновленный селектор
-        print("Поле ввода найдено")
-        input_field.send_keys(user_message)
-        print(f"Сообщение '{user_message}' отправлено")
-        input_field.send_keys(Keys.RETURN)
-        time.sleep(5)  # Даем время на получение ответа
+            print("Ожидание селектора 'textarea#input'...")
+            await page.wait_for_selector('textarea#input', timeout=60000)  # Увеличиваем таймаут до 60 секунд
+            print("Селектор найден.")
 
-        # Находим ответ и отправляем его пользователю
-        reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')  # Обновленный селектор
-        if reply_elements:
-            reply_text = reply_elements[-1].text  # Берем последний элемент, так как он будет самым новым ответом
-            print(f"Ответ найден: {reply_text}")
-            if reply_text.strip().lower() != user_message.strip().lower():
-                await update.message.reply_text(reply_text)
-            else:
-                await update.message.reply_text("Пожалуйста, подождите, я обрабатываю ваш запрос...")
-                time.sleep(5)  # Даем дополнительное время на получение ответа
-                reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
-                if reply_elements:
-                    reply_text = reply_elements[-1].text
-                    if reply_text.strip().lower() != user_message.strip().lower():
-                        await update.message.reply_text(reply_text)
+            input_field = await page.query_selector('textarea#input')
+            print("Поле ввода найдено.")
+            await input_field.fill(user_message)
+            print(f"Сообщение '{user_message}' отправлено.")
+            await input_field.press('Enter')
+            print("Нажата клавиша Enter.")
+
+            print("Ожидание ответа...")
+            await page.wait_for_selector('div.message-content', timeout=60000)  # Увеличиваем таймаут до 60 секунд
+            print("Ответ получен.")
+
+            reply_elements = await page.query_selector_all('div.message-content')
+            if reply_elements:
+                reply_text = await reply_elements[-1].text_content()
+                if reply_text.strip().lower() != user_message.strip().lower():
+                    await update.message.reply_text(reply_text)
+                else:
+                    await update.message.reply_text("Пожалуйста, подождите, я обрабатываю ваш запрос...")
+                    await page.wait_for_timeout(5000)
+                    reply_elements = await page.query_selector_all('div.message-content')
+                    if reply_elements:
+                        reply_text = await reply_elements[-1].text_content()
+                        if reply_text.strip().lower() != user_message.strip().lower():
+                            await update.message.reply_text(reply_text)
+                        else:
+                            await update.message.reply_text("Извините, я не могу обработать ваш запрос в данный момент. Пожалуйста, попробуйте позже.")
                     else:
                         await update.message.reply_text("Извините, я не могу обработать ваш запрос в данный момент. Пожалуйста, попробуйте позже.")
-                else:
-                    await update.message.reply_text("Извините, я не могу обработать ваш запрос в данный момент. Пожалуйста, попробуйте позже.")
-        else:
-            raise Exception("Ответ не найден на странице.")
-    except Exception as e:
-        await update.message.reply_text(f'Произошла ошибка: {str(e)}')
-        print(f'Ошибка: {str(e)}')
+            else:
+                await update.message.reply_text("Извините, я не могу обработать ваш запрос в данный момент. Пожалуйста, попробуйте позже.")
+
+        except Exception as e:
+            print(f"Ошибка: {e}")
+            await update.message.reply_text(f"Произошла ошибка: {str(e)}")
+
+        finally:
+            await browser.close()
+            print("Браузер закрыт.")
 
 def main() -> None:
     # Создаем приложение и передаем ему токен вашего бота
