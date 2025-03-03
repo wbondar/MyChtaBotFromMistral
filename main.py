@@ -97,7 +97,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         browser = None
         try:
             print("Запуск браузера...")
-            browser = await p.firefox.launch(headless=False)  # Отключаем headless режим для отладки
+            browser = await p.firefox.launch(headless=True)  # Включаем headless режим
             print("Браузер запущен.")
             page = await browser.new_page()
             print("Создана новая страница.")
