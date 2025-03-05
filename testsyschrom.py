@@ -13,7 +13,7 @@ def get_os_info():
 def get_chromium_info():
     try:
         # Проверяем, установлен ли Chromium
-        chromium_path = subprocess.check_output(["which", "chromium-browser"], text=True).strip()
+        chromium_path = subprocess.check_output(["which", "chromium"], text=True).strip()
         # Получаем версию Chromium
         version = subprocess.check_output([chromium_path, "--version"], text=True).strip()
         return {
