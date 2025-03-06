@@ -42,7 +42,6 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
     await send_message(context, chat_id, message)
 
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Постоянные сообщения
     schedule.every().monday.at("08:00").do(
         send_scheduled_message, context=context, chat_id=chat_id,
         message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
@@ -103,7 +102,6 @@ def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
         message="Хватит маяться! Спать пора уже!"
     )
 
-    # Случайные сообщения
     for hour in range(9, 22):
         schedule.every().day.at(f"{hour:02}:00").do(
             send_random_message, context=context, chat_id=chat_id
@@ -184,12 +182,7 @@ async def scheduler() -> None:
         await asyncio.sleep(1)
 
 async def main() -> None:
-    application = (
-        ApplicationBuilder()
-        .token(TELEGRAM_TOKEN)
-        .concurrent_updates(True)
-        .build()
-    )
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).concurrent_updates(True).build()
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random))
@@ -198,8 +191,17 @@ async def main() -> None:
     # Запускаем планировщик в фоновом режиме
     asyncio.create_task(scheduler())
 
-    # Запускаем бота
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+
+    try:
+        while True:
+            await asyncio.sleep(1)
+    finally:
+        await application.stop()
+        await application.updater.stop()
+        await application.shutdown()
 
 if __name__ == '__main__':
     asyncio.run(main())
