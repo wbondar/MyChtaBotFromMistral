@@ -142,8 +142,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except Exception as e:
         await update.message.reply_text(f'Произошла ошибка: {str(e)}')
     finally:
-        # Важно закрыть драйвер после каждой операции!
-        driver.quit()
+        # Проверяем, существует ли driver перед закрытием
+        if 'driver' in locals():
+            try:
+                driver.quit()
+            except Exception:
+                pass  # Если что-то пошло не так при закрытии, просто игнорируем
 
 def main() -> None:
     # Создаем приложение и передаем ему токен вашего бота
