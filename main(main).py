@@ -23,7 +23,7 @@ options.add_argument('--disable-dev-shm-usage')
 options.binary_location = '/usr/bin/chromium'  # Укажите правильный путь к Chromium
 
 # Укажите правильный путь к ChromeDriver
-chrome_driver_path = './chromedriver'
+chrome_driver_path = '/usr/bin/chromium'
 
 # Инициализация веб-драйвера
 service = Service(executable_path=chrome_driver_path)
