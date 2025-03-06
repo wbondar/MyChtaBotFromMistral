@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y \
     chromium \
     chromium-driver \
     xvfb \
+    tini \  # Добавлено для управления процессами
     fonts-liberation2 \
     libatk-bridge2.0-0 \
     libgbm1 \
@@ -40,4 +41,5 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
+# Используем tini для запуска процессов
+CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
