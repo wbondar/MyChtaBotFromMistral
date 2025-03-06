@@ -1,9 +1,11 @@
-# Используем официальный образ Python с Alpine для минимизации размера
+# Используем официальный образ Python с Slim для минимизации размера
 FROM python:3.11-slim
 
-# Установка Chromium и необходимых зависимостей
+# Установка зависимостей для Chromium и Xvfb
 RUN apt-get update && apt-get install -y \
     chromium \
+    chromium-driver \
+    xvfb \
     fonts-liberation2 \
     libatk-bridge2.0-0 \
     libgbm1 \
@@ -24,7 +26,7 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем chromedriver из проекта в системный путь
+# Копируем chromedriver из проекта и делаем его исполняемым
 COPY chromedriver /usr/bin/chromedriver
 RUN chmod +x /usr/bin/chromedriver
 
@@ -39,14 +41,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Настройка переменных окружения
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
-    CHROMEDRIVER_VERSION=120.0.6099.224 \
-    CHROME_BINARY_PATH=/usr/bin/chromium \
-    LANG=C.UTF-8 \
+    CHROME_BIN=/usr/bin/chromium \
+    DISPLAY=:99  # Для Xvfb
+ENV LANG=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-# Добавляем путь к драйверу в переменную PATH
+# Добавляем путь к драйверу в PATH
 ENV PATH=${PATH}:/usr/bin
 
-# Запуск приложения
-CMD ["python", "main.py"]
+# Запуск Xvfb и приложения
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
