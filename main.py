@@ -15,20 +15,6 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 # URL сайта
 SITE_URL = 'https://trychatgpt.ru'
 
-# Настройка веб-драйвера (например, для Chrome)
-options = webdriver.ChromeOptions()
-options.add_argument('--headless')  # Запуск в фоновом режиме
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.binary_location = '/usr/bin/chromium'  # Укажите правильный путь к Chromium
-
-# Укажите правильный путь к ChromeDriver
-chrome_driver_path = '/usr/bin/chromium'
-
-# Инициализация веб-драйвера
-service = Service(executable_path=chrome_driver_path)
-driver = webdriver.Chrome(service=service, options=options)
-
 # Список случайных фраз
 random_phrases = [
     "Андрей, держись бодрей! А то Петька отмерзнет!",
@@ -107,34 +93,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         chat_history[chat_id].pop(0)
 
     try:
+        # Инициализация драйвера ВНУТРИ ФУНКЦИИ
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless=new')  # Используем новый headless режим
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--window-size=1920x1080')
+        options.binary_location = '/usr/bin/chromium'  # Путь к Chromium
+
+        service = Service(executable_path='/usr/bin/chromedriver')  # Путь к Chromedriver
+        driver = webdriver.Chrome(service=service, options=options)
+
         # Открываем сайт
         driver.get(SITE_URL)
         time.sleep(5)  # Даем время на загрузку страницы
-        print("Сайт загружен")
 
         # Проверка, что страница полностью загружена
         if "ChatGPT" not in driver.page_source:
             raise Exception("Страница не загружена корректно.")
-        print("Страница загружена корректно")
 
         # Находим поле ввода и отправляем сообщение
-        input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')  # Обновленный селектор
-        print("Поле ввода найдено")
+        input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
         input_field.send_keys(user_message)
-        print(f"Сообщение '{user_message}' отправлено")
         input_field.send_keys(Keys.RETURN)
         time.sleep(5)  # Даем время на получение ответа
 
         # Находим ответ и отправляем его пользователю
-        reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')  # Обновленный селектор
+        reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
         if reply_elements:
-            reply_text = reply_elements[-1].text  # Берем последний элемент, так как он будет самым новым ответом
-            print(f"Ответ найден: {reply_text}")
+            reply_text = reply_elements[-1].text  # Берем последний элемент
             if reply_text.strip().lower() != user_message.strip().lower():
                 await update.message.reply_text(reply_text)
             else:
                 await update.message.reply_text("Пожалуйста, подождите, я обрабатываю ваш запрос...")
-                time.sleep(5)  # Даем дополнительное время на получение ответа
+                time.sleep(5)  # Даем дополнительное время
                 reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
                 if reply_elements:
                     reply_text = reply_elements[-1].text
@@ -148,7 +141,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             raise Exception("Ответ не найден на странице.")
     except Exception as e:
         await update.message.reply_text(f'Произошла ошибка: {str(e)}')
-        print(f'Ошибка: {str(e)}')
+    finally:
+        # Важно закрыть драйвер после каждой операции!
+        driver.quit()
 
 def main() -> None:
     # Создаем приложение и передаем ему токен вашего бота
