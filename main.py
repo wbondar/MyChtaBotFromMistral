@@ -1,5 +1,5 @@
 import os
-import random as rand  # Используем alias для модуля random
+import random as rand
 import schedule
 import time
 from telegram import Update
@@ -8,6 +8,9 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from threading import Thread
+import asyncio
 
 # Ваш токен Telegram-бота
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -40,7 +43,7 @@ async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: s
 
 # Функция для отправки случайного сообщения
 async def send_random_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
-    message = rand.choice(random_phrases)  # Используем alias rand
+    message = rand.choice(random_phrases)
     await send_message(context, chat_id, message)
 
 # Функция для отправки постоянного сообщения
@@ -93,78 +96,77 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         chat_history[chat_id].pop(0)
 
     try:
-        # Инициализация драйвера ВНУТРИ ФУНКЦИИ
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless=new')  # Используем новый headless режим
+        options.add_argument('--headless=new')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
         options.add_argument('--window-size=1920x1080')
-        options.binary_location = '/usr/bin/chromium'  # Путь к Chromium
+        options.binary_location = '/usr/bin/chromium'
 
-        service = Service(executable_path='/usr/bin/chromedriver')  # Путь к Chromedriver
+        service = Service(executable_path='/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
 
-        # Открываем сайт
-        driver.get(SITE_URL)
-        time.sleep(5)  # Даем время на загрузку страницы
+        try:
+            driver.set_page_load_timeout(30)  # Установка таймаута загрузки страницы
+            driver.get(SITE_URL)
+            time.sleep(5)
 
-        # Проверка, что страница полностью загружена
-        if "ChatGPT" not in driver.page_source:
-            raise Exception("Страница не загружена корректно.")
+            if "ChatGPT" not in driver.page_source:
+                raise Exception("Страница не загружена корректно.")
 
-        # Находим поле ввода и отправляем сообщение
-        input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
-        input_field.send_keys(user_message)
-        input_field.send_keys(Keys.RETURN)
-        time.sleep(5)  # Даем время на получение ответа
+            input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
+            input_field.send_keys(user_message)
+            input_field.send_keys(Keys.RETURN)
+            time.sleep(5)
 
-        # Находим ответ и отправляем его пользователю
-        reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
-        if reply_elements:
-            reply_text = reply_elements[-1].text  # Берем последний элемент
-            if reply_text.strip().lower() != user_message.strip().lower():
-                await update.message.reply_text(reply_text)
-            else:
-                await update.message.reply_text("Пожалуйста, подождите, я обрабатываю ваш запрос...")
-                time.sleep(5)  # Даем дополнительное время
-                reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
-                if reply_elements:
-                    reply_text = reply_elements[-1].text
-                    if reply_text.strip().lower() != user_message.strip().lower():
-                        await update.message.reply_text(reply_text)
-                    else:
-                        await update.message.reply_text("Извините, я не могу обработать ваш запрос в данный момент. Пожалуйста, попробуйте позже.")
+            reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
+            if reply_elements:
+                reply_text = reply_elements[-1].text
+                if reply_text.strip().lower() != user_message.strip().lower():
+                    await update.message.reply_text(reply_text)
                 else:
-                    await update.message.reply_text("Извините, я не могу обработать ваш запрос в данный момент. Пожалуйста, попробуйте позже.")
-        else:
-            raise Exception("Ответ не найден на странице.")
+                    await update.message.reply_text("Пожалуйста, подождите, обрабатываю ваш запрос...")
+                    time.sleep(5)
+                    reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
+                    if reply_elements:
+                        reply_text = reply_elements[-1].text
+                        if reply_text.strip().lower() != user_message.strip().lower():
+                            await update.message.reply_text(reply_text)
+                        else:
+                            await update.message.reply_text("Извините, ответ не получен. Попробуйте позже.")
+                    else:
+                        await update.message.reply_text("Извините, ответ не найден. Попробуйте позже.")
+            else:
+                raise Exception("Ответ не найден на странице.")
+        finally:
+            if 'driver' in locals():
+                try:
+                    driver.quit()
+                except Exception as e:
+                    print(f"Ошибка при закрытии драйвера: {str(e)}")
     except Exception as e:
         await update.message.reply_text(f'Произошла ошибка: {str(e)}')
-    finally:
-        # Проверяем, существует ли driver перед закрытием
-        if 'driver' in locals():
-            try:
-                driver.quit()
-            except Exception:
-                pass  # Если что-то пошло не так при закрытии, просто игнорируем
 
-def main() -> None:
-    # Создаем приложение и передаем ему токен вашего бота
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
-    # Регистрируем обработчики
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('random', random))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    # Запускаем бота
-    application.run_polling()
-
-    # Запускаем планировщик
+def schedule_jobs():
     while True:
         schedule.run_pending()
         time.sleep(1)
 
+async def main() -> None:
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).concurrent_updates(True).build()
+
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('random', random))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # Запуск планировщика в отдельном потоке
+    scheduler_thread = Thread(target=schedule_jobs)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
+
+    # Запуск бота
+    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
