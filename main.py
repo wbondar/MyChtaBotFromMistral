@@ -10,8 +10,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     filters,
-    ContextTypes,
-    ContextTypes as TelegramContext
+    ContextTypes
 )
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -20,7 +19,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import asyncio
 
-# Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -133,14 +131,10 @@ async def scheduler() -> None:
         await asyncio.sleep(1)
 
 async def main() -> None:
-    # Уникальный context_types для предотвращения конфликтов
-    context_types = TelegramContext(context=TelegramContext.CONTEXT_TYPES)
-    
     application = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
         .concurrent_updates(True)
-        .context_types(context_types)
         .build()
     )
 
@@ -148,10 +142,8 @@ async def main() -> None:
     application.add_handler(CommandHandler('random', random))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Запуск планировщика
     asyncio.create_task(scheduler())
 
-    # Обработчики сигналов
     async def shutdown(signal: str):
         logging.info(f"Received {signal}, shutting down...")
         await application.stop()
@@ -162,7 +154,6 @@ async def main() -> None:
     loop.add_signal_handler(signal.SIGINT, lambda: asyncio.create_task(shutdown("SIGINT")))
     loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.create_task(shutdown("SIGTERM")))
 
-    # Запуск приложения
     await application.initialize()
     await application.start()
     await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
