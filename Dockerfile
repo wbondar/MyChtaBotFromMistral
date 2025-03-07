@@ -23,13 +23,17 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     libxss1 \
     libxtst6 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем ChromeDriver из корня проекта в образ
+# Удаляем старый chromedriver
+RUN apt-get remove -y chromium-driver || true
+
+# Копируем chromedriver из корня проекта
 COPY chromedriver /usr/bin/chromedriver
 RUN chmod +x /usr/bin/chromedriver
 
-# Проверяем версии (для диагностики)
+# Проверка версий
 RUN echo "Chromium version:" && chromium --version
 RUN echo "ChromeDriver version:" && chromedriver --version
 
@@ -48,5 +52,5 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
-# Запуск приложения
-CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
+# Запуск с задержкой для предотвращения конфликтов
+CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 10 && python main.py"]
