@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
+# Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
     chromium \
-    chromium-driver \
     xvfb \
     tini \
     fonts-liberation2 \
@@ -25,14 +25,21 @@ RUN apt-get update && apt-get install -y \
     libxtst6 \
     && rm -rf /var/lib/apt/lists/*
 
+# Копируем ChromeDriver из корня проекта в образ
 COPY chromedriver /usr/bin/chromedriver
 RUN chmod +x /usr/bin/chromedriver
+
+# Проверяем версии (для диагностики)
+RUN echo "Chromium version:" && chromium --version
+RUN echo "ChromeDriver version:" && chromedriver --version
 
 WORKDIR /app
 COPY . /app
 
+# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Настройки окружения
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     CHROME_BIN=/usr/bin/chromium \
     DISPLAY=:99 \
@@ -41,4 +48,5 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
+# Запуск приложения
 CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
