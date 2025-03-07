@@ -2,27 +2,14 @@ import os
 import random as rand
 import schedule
 import time
-import signal
-import logging
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    ContextTypes
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import asyncio
-
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -119,10 +106,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if 'driver' in locals():
                 try:
                     driver.quit()
-                except Exception as e:
-                    logging.error(f"Ошибка при закрытии драйвера: {e}")
+                except:
+                    pass
     except Exception as e:
-        logging.error(f"Ошибка обработки сообщения: {e}")
         await update.message.reply_text(f'Ошибка: {str(e)}')
 
 async def scheduler() -> None:
@@ -131,12 +117,7 @@ async def scheduler() -> None:
         await asyncio.sleep(1)
 
 async def main() -> None:
-    application = (
-        ApplicationBuilder()
-        .token(TELEGRAM_TOKEN)
-        .concurrent_updates(True)
-        .build()
-    )
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).concurrent_updates(True).build()
 
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random))
@@ -144,22 +125,17 @@ async def main() -> None:
 
     asyncio.create_task(scheduler())
 
-    async def shutdown(signal: str):
-        logging.info(f"Received {signal}, shutting down...")
-        await application.stop()
-        await application.updater.stop()
-        await application.shutdown()
-    
-    loop = asyncio.get_event_loop()
-    loop.add_signal_handler(signal.SIGINT, lambda: asyncio.create_task(shutdown("SIGINT")))
-    loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.create_task(shutdown("SIGTERM")))
-
     await application.initialize()
     await application.start()
     await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
 
-    logging.info("Бот успешно запущен")
-    await asyncio.Event().wait()
+    try:
+        while True:
+            await asyncio.sleep(1)
+    finally:
+        await application.stop()
+        await application.updater.stop()
+        await application.shutdown()
 
 if __name__ == '__main__':
     asyncio.run(main())
