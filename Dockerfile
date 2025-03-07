@@ -1,6 +1,5 @@
 FROM python:3.11-slim
 
-# Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
     chromium \
     xvfb \
@@ -26,24 +25,19 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Удаляем старый chromedriver
 RUN apt-get remove -y chromium-driver || true
 
-# Копируем chromedriver из корня проекта
 COPY chromedriver /usr/bin/chromedriver
 RUN chmod +x /usr/bin/chromedriver
 
-# Проверка версий
 RUN echo "Chromium version:" && chromium --version
 RUN echo "ChromeDriver version:" && chromedriver --version
 
 WORKDIR /app
 COPY . /app
 
-# Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Настройки окружения
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     CHROME_BIN=/usr/bin/chromium \
     DISPLAY=:99 \
@@ -52,5 +46,4 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
-# Запуск с задержкой для предотвращения конфликтов
-CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & sleep 10 && python main.py"]
+CMD ["tini", "--", "sh", "-c", "rm -f /tmp/.X99-lock && Xvfb :99 -screen 0 1024x768x24 & sleep 10 && python main.py"]
