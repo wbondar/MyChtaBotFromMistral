@@ -17,16 +17,6 @@ SITE_URL = 'https://trychatgpt.ru'
 random_phrases = [
     "Андрей, держись бодрей! А то Петька отмерзнет!",
     "Ну что, заскучали? Так займитесь делом!",
-    "Пора бы и за работу, но лучше выпейте по 100 грамм!",
-    "Кто охотчий до еды, пусть пожалует сюды...",
-    "Чем вы вообще вот занимаетесь, что я должен вас все время контролировать?",
-    "Андрей! Прекрати ЭТО делать! Коллеги могут увидеть!",
-    "Шайтаны, ну вы чего? Кто это опять такую кучу навалял?!",
-    "Саня, расскажи про БАБ и про женщин!",
-    "Вадик, проснись! Тебя все ищут!",
-    "Перцы, рассказывайте кому что снилось сегодня?",
-    "МЕРНЕМ ЖАНИД - значит на армянском (Дай мне умереть на твоем теле!)",
-    "- Эх Яблочко да на тарелочке - Погибай же ты КОНТРА в перестрелочке!"
 ]
 
 chat_history = {}
@@ -46,62 +36,7 @@ def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
         send_scheduled_message, context=context, chat_id=chat_id,
         message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
     )
-    schedule.every().tuesday.at("08:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
-    )
-    schedule.every().wednesday.at("08:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
-    )
-    schedule.every().thursday.at("08:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
-    )
-    schedule.every().friday.at("08:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
-    )
-
-    schedule.every().monday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Пора спать, Засранцы! Завтра все опять на работу, не проспите!"
-    )
-    schedule.every().tuesday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Пора спать, Засранцы! Завтра все опять на работу, не проспите!"
-    )
-    schedule.every().wednesday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Пора спать, Засранцы! Завтра все опять на работу, не проспите!"
-    )
-    schedule.every().thursday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Пора спать, Засранцы! Завтра все опять на работу, не проспите!"
-    )
-    schedule.every().friday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Пора спать, Засранцы! Завтра все опять на работу, не проспите!"
-    )
-
-    schedule.every().saturday.at("09:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Спите еще? Вставайте завтракать!"
-    )
-    schedule.every().sunday.at("09:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Спите еще? Вставайте завтракать!"
-    )
-
-    schedule.every().saturday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Хватит маяться! Спать пора уже!"
-    )
-    schedule.every().sunday.at("22:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Хватит маяться! Спать пора уже!"
-    )
-
+    
     for hour in range(9, 22):
         schedule.every().day.at(f"{hour:02}:00").do(
             send_random_message, context=context, chat_id=chat_id
@@ -188,7 +123,6 @@ async def main() -> None:
     application.add_handler(CommandHandler('random', random))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Запускаем планировщик в фоновом режиме
     asyncio.create_task(scheduler())
 
     await application.initialize()
