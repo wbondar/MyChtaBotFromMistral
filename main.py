@@ -10,9 +10,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import asyncio
-import pytz  # Импортируем pytz
-import functools  # Импортируем functools
-
+import pytz
+import functools
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -67,56 +66,52 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
 
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Планирует отправку сообщений."""
-    tz = pytz.timezone(TARGET_TIMEZONE)  #  Создаем объект часового пояса
+    tz = pytz.timezone(TARGET_TIMEZONE)  # Создаем объект часового пояса
 
-    #  Используем functools.partial для передачи аргументов
-    schedule.every().monday.at("08:00", tz).do(
+    # Используем functools.partial для передачи аргументов и tz
+    schedule.every().monday.at(functools.partial(lambda tz: "08:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
     )
-    schedule.every().tuesday.at("08:00", tz).do(
+    schedule.every().tuesday.at(functools.partial(lambda tz: "08:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
     )
-    schedule.every().wednesday.at("08:00", tz).do(
+    schedule.every().wednesday.at(functools.partial(lambda tz: "08:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
     )
-    schedule.every().thursday.at("08:00", tz).do(
-        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
-    )
-    schedule.every().friday.at("08:00", tz).do(
-        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
-    )
-
-    schedule.every().monday.at("22:00", tz).do(
+    schedule.every().thursday.at(functools.partial(lambda tz: "08:00", tz=tz)(), tz).do(  # Исправлено
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, mes
+    schedule.every().monday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
     )
-    schedule.every().tuesday.at("22:00", tz).do(functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
-    )
-    schedule.every().wednesday.at("22:00", tz).do(
+    schedule.every().tuesday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
     )
-    schedule.every().thursday.at("22:00", tz).do(
+    schedule.every().wednesday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
     )
-    schedule.every().friday.at("22:00", tz).do(
+    schedule.every().thursday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
+    schedule.every().friday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
     )
 
-    schedule.every().saturday.at("09:00", tz).do(
+    schedule.every().saturday.at(functools.partial(lambda tz: "09:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_morning_message)
     )
-    schedule.every().sunday.at("09:00", tz).do(
+    schedule.every().sunday.at(functools.partial(lambda tz: "09:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_morning_message)
     )
 
-    schedule.every().saturday.at("22:00", tz).do(
+    schedule.every().saturday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_evening_message)
     )
-    schedule.every().sunday.at("22:00", tz).do(
+    schedule.every().sunday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_evening_message)
     )
 
-    #  Ежечасные случайные сообщения (с 9 до 21 включительно)
-    schedule.every().hour.at(":00", tz).do(
+    # Ежечасные случайные сообщения (с 9 до 21 включительно)
+    schedule.every().hour.at(functools.partial(lambda tz: ":00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_random_message, context=context, chat_id=chat_id)
     )
 
@@ -154,8 +149,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         options.add_argument('--disable-gpu')
         options.add_argument('--window-size=1920x1080')
         options.binary_location = '/usr/bin/chromium'
-
-        service = Service(executable_path='/usr/bin/chromedriver')
+service = Service(executable_path='/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
 
         try:
@@ -182,12 +176,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 raise Exception("Ответ не найден.")
 
         except TimeoutException:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Превышено время ожидания ответа от ChatGPT.")
+            await context.bot.edit_message_text(chat_id=chat_message_id, message_id=waiting_message.message_id, text="Превышено время ожидания ответа от ChatGPT.")
 
         except NoSuchElementException:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Не удалось найти поле ввода или ответ на странице.")
+            await context.bot.edit_message_text(chat_id=chat_message_id, message_id=waiting_message.message_id, text="Не удалось найти поле ввода или ответ на странице.")
         except Exception as e:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с ChatGPT: {str(e)}')
+            await context.bot.edit_message_text(chat_id=chat_message_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с ChatGPT: {str(e)}')
         finally:
             if 'driver' in locals():
                 try:
@@ -196,7 +190,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     pass  # Игнорируем ошибки при закрытии
 
     except Exception as e:
-        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
+        await context.bot.edit_message_text(chat_id=chat_message_id, message_id=waiting_message.message_id,
                                               text=f'Ошибка: {str(e)}')
 
 
@@ -205,6 +199,7 @@ async def scheduler() -> None:
     while True:
         schedule.run_pending()
         await asyncio.sleep(1)  # Проверяем задачи каждую секунду
+
 
 async def main() -> None:
     """Основная функция бота."""
@@ -222,12 +217,13 @@ async def main() -> None:
 
     try:
         while True:
-            await asyncio.sleep(1) #Просто чтобы не загружать процессор
+            await asyncio.sleep(1)  # Просто чтобы не загружать процессор
     finally:
         # Корректно завершаем работу при остановке
         await application.stop()
         await application.updater.stop()
         await application.shutdown()
+
 
 if __name__ == '__main__':
     asyncio.run(main())
