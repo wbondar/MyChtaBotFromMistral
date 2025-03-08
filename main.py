@@ -11,6 +11,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import asyncio
 import pytz  # Импортируем pytz
+import functools  # Импортируем functools
+
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -41,7 +43,7 @@ random_phrases = [
     "А ну-ка, встряхнитесь!  Покажите, на что способны!",
     "Работа зовёт!  Отправляйтесь в бой!",
     "Не время для отдыха!  Ещё много дел впереди!",
-    "Вышеголову!  И с песней – вперёд!",
+    "Выше голову!  И с песней – вперёд!",
     "Сегодня ваш день!  Сделайте его незабываемым!",
 ]
 
@@ -66,27 +68,57 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Планирует отправку сообщений."""
     tz = pytz.timezone(TARGET_TIMEZONE)  #  Создаем объект часового пояса
-    schedule.every().monday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
-    schedule.every().tuesday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
-    schedule.every().wednesday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
-    schedule.every().thursday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
-    schedule.every().friday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
 
-    schedule.every().monday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
-    schedule.every().tuesday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
-    schedule.every().wednesday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
-    schedule.every().thursday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
-    schedule.every().friday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
+    #  Используем functools.partial для передачи аргументов
+    schedule.every().monday.at("08:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
+    )
+    schedule.every().tuesday.at("08:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
+    )
+    schedule.every().wednesday.at("08:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
+    )
+    schedule.every().thursday.at("08:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
+    )
+    schedule.every().friday.at("08:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
+    )
 
-    schedule.every().saturday.at("09:00", tz).do(send_scheduled_message, context, chat_id, weekend_morning_message)
-    schedule.every().sunday.at("09:00", tz).do(send_scheduled_message, context, chat_id, weekend_morning_message)
+    schedule.every().monday.at("22:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
+    schedule.every().tuesday.at("22:00", tz).do(functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
+    schedule.every().wednesday.at("22:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
+    schedule.every().thursday.at("22:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
+    schedule.every().friday.at("22:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
 
-    schedule.every().saturday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekend_evening_message)
-    schedule.every().sunday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekend_evening_message)
+    schedule.every().saturday.at("09:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_morning_message)
+    )
+    schedule.every().sunday.at("09:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_morning_message)
+    )
+
+    schedule.every().saturday.at("22:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_evening_message)
+    )
+    schedule.every().sunday.at("22:00", tz).do(
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekend_evening_message)
+    )
 
     #  Ежечасные случайные сообщения (с 9 до 21 включительно)
-    schedule.every().hour.at(":00").do(send_random_message, context, chat_id)
-
+    schedule.every().hour.at(":00", tz).do(
+        functools.partial(send_random_message, context=context, chat_id=chat_id)
+    )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start."""
@@ -116,7 +148,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     try:
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless=new')  #Работа в фоновом режиме
+        options.add_argument('--headless=new')  # Работа в фоновом режиме
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
