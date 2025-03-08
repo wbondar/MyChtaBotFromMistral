@@ -79,7 +79,8 @@ def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_morning_message)
     )
     schedule.every().thursday.at(functools.partial(lambda tz: "08:00", tz=tz)(), tz).do(  # Исправлено
-        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, mes
+        functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
+    )
     schedule.every().monday.at(functools.partial(lambda tz: "22:00", tz=tz)(), tz).do(  # Исправлено
         functools.partial(send_scheduled_message, context=context, chat_id=chat_id, message=weekday_evening_message)
     )
