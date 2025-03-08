@@ -1,5 +1,5 @@
 import os
-import random as rand
+import random
 import schedule
 import time
 from telegram import Update, constants
@@ -10,10 +10,23 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import asyncio
+import pytz  # Импортируем pytz
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
 
+#  =======  НАСТРОЙКИ  =======
+TARGET_TIMEZONE = 'Europe/Moscow'  #  Целевой часовой пояс
+
+# Сообщения для будних дней
+weekday_morning_message = "Вставайте, Засранцы и давайте работайте над собой и на державу!"
+weekday_evening_message = "Пора спать, Засранцы! Завтра все опять на работу, не проспите!"
+
+# Сообщения для выходных
+weekend_morning_message = "Спите еще? Вставайте завтракать!"
+weekend_evening_message = "Хватит маяться! Спать пора уже!"
+
+#  Случайные фразы (расширенный список)
 random_phrases = [
     "Андрей, держись бодрей! А то Петька отмерзнет!",
     "Ну что, заскучали? Так займитесь делом!",
@@ -22,19 +35,28 @@ random_phrases = [
     "Кто рано встаёт, тому... тому работать надо!",
     "Не ленись, а то превратишься в ленивца!",
     "Работа не волк, но и без неё никак!",
-    "Хватит мечтать, пора действовать!"
+    "Хватит мечтать, пора действовать!",
+    "Что-то вы расслабились!  Соберитесь!",
+    "Время – деньги!  Не тратьте его зря!",
+    "А ну-ка, встряхнитесь!  Покажите, на что способны!",
+    "Работа зовёт!  Отправляйтесь в бой!",
+    "Не время для отдыха!  Ещё много дел впереди!",
+    "Вышеголову!  И с песней – вперёд!",
+    "Сегодня ваш день!  Сделайте его незабываемым!",
 ]
+
+# ==========================
 
 chat_history = {}
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
     message = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
-    return message  # Возвращаем объект сообщения
+    return message
 
 async def send_random_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
     """Отправляет случайное сообщение из списка."""
-    message = rand.choice(random_phrases)
+    message = random.choice(random_phrases)
     await send_message(context, chat_id, message)
 
 async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message: str) -> None:
@@ -43,16 +65,28 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
 
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Планирует отправку сообщений."""
+    tz = pytz.timezone(TARGET_TIMEZONE)  #  Создаем объект часового пояса
+    schedule.every().monday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
+    schedule.every().tuesday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
+    schedule.every().wednesday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
+    schedule.every().thursday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
+    schedule.every().friday.at("08:00", tz).do(send_scheduled_message, context, chat_id, weekday_morning_message)
 
-    schedule.every().monday.at("08:00").do(
-        send_scheduled_message, context=context, chat_id=chat_id,
-        message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
-    )
+    schedule.every().monday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
+    schedule.every().tuesday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
+    schedule.every().wednesday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
+    schedule.every().thursday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
+    schedule.every().friday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekday_evening_message)
 
-    # Ежечасные случайные сообщения
-    schedule.every().hour.at(":00").do(
-        send_random_message, context=context, chat_id=chat_id
-    )
+    schedule.every().saturday.at("09:00", tz).do(send_scheduled_message, context, chat_id, weekend_morning_message)
+    schedule.every().sunday.at("09:00", tz).do(send_scheduled_message, context, chat_id, weekend_morning_message)
+
+    schedule.every().saturday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekend_evening_message)
+    schedule.every().sunday.at("22:00", tz).do(send_scheduled_message, context, chat_id, weekend_evening_message)
+
+    #  Ежечасные случайные сообщения (с 9 до 21 включительно)
+    schedule.every().hour.at(":00").do(send_random_message, context, chat_id)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start."""
@@ -82,7 +116,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     try:
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless=new')  # Работа в фоновом режиме
+        options.add_argument('--headless=new')  #Работа в фоновом режиме
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
