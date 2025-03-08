@@ -10,6 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import TimeoutException, WebDriverException
 import asyncio
+import pytz  # Добавлено для работы с часовыми поясами
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -32,6 +33,10 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
     await send_message(context, chat_id, message)
 
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Установка московского времени
+    schedule.set_timezone(pytz.timezone('Europe/Moscow'))
+    
+    # Планирование сообщений
     schedule.every().monday.at("08:00").do(
         send_scheduled_message, context=context, chat_id=chat_id,
         message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
@@ -54,13 +59,10 @@ async def random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = update.message.text
     chat_id = update.message.chat_id
-
-    if chat_id not in chat_history:
-        chat_history[chat_id] = []
-    chat_history[chat_id].append(user_message)
-    if len(chat_history[chat_id]) > 20:
-        chat_history[chat_id].pop(0)
-
+    
+    # Временное сообщение
+    temp_message = await update.message.reply_text("Готовлю для тебя ответ! Будь терпелив...")
+    
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless=new')
@@ -69,39 +71,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         options.add_argument('--disable-gpu')
         options.add_argument('--window-size=1920x1080')
         options.binary_location = '/usr/bin/chromium'
-
         service = Service(executable_path='/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
-
+        
         try:
             driver.set_page_load_timeout(30)
             driver.get(SITE_URL)
             await asyncio.sleep(5)
-
+            
             if "ChatGPT" not in driver.page_source:
                 raise Exception("Страница не загружена корректно.")
-
+                
             input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)
             await asyncio.sleep(5)
-
+            
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
                 reply_text = reply_elements[-1].text
                 if reply_text.strip().lower() != user_message.strip().lower():
+                    # Удаляем временное сообщение
+                    await context.bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
                     await update.message.reply_text(reply_text)
                 else:
-                    await update.message.reply_text("Пожалуйста, подождите...")
                     await asyncio.sleep(5)
                     reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
                     if reply_elements:
-                        reply_text = reply_elements[-1].text
-                        await update.message.reply_text(reply_text)
+                        # Удаляем временное сообщение
+                        await context.bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
+                        await update.message.reply_text(reply_elements[-1].text)
                     else:
-                        await update.message.reply_text("Ошибка: ответ не найден.")
+                        raise Exception("Ошибка: ответ не найден.")
             else:
                 raise Exception("Ответ не найден.")
+                
         finally:
             if 'driver' in locals():
                 try:
@@ -109,7 +113,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 except:
                     pass
     except Exception as e:
+        # Удаляем временное сообщение в случае ошибки
+        await context.bot.delete_message(chat_id=chat_id, message_id=temp_message.message_id)
         await update.message.reply_text(f'Ошибка: {str(e)}')
+
+# Новый обработчик для проверки активности
+async def keep_alive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("Сервис активен!")
 
 async def scheduler() -> None:
     while True:
@@ -118,17 +128,18 @@ async def scheduler() -> None:
 
 async def main() -> None:
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).concurrent_updates(True).build()
-
+    
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random))
+    application.add_handler(CommandHandler('ping', keep_alive))  # Добавлен новый обработчик
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
+    
     asyncio.create_task(scheduler())
-
+    
     await application.initialize()
     await application.start()
     await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-
+    
     try:
         while True:
             await asyncio.sleep(1)
