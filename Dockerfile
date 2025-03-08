@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y \
     chromium \
+    tzdata \
     xvfb \
     tini \
     fonts-liberation2 \
@@ -24,6 +25,10 @@ RUN apt-get update && apt-get install -y \
     libxss1 \
     libxtst6 \
     && rm -rf /var/lib/apt/lists/*
+
+# Настройка часового пояса Москвы
+ENV TZ=Europe/Moscow
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone    
 
 # Копируем ChromeDriver из корня проекта в образ
 COPY chromedriver /usr/bin/chromedriver
