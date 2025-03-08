@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Устанавливаем системные зависимости
+# Установка зависимостей
 RUN apt-get update && apt-get install -y \
     chromium \
     tzdata \
@@ -24,25 +24,32 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     libxss1 \
     libxtst6 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Настройка часового пояса Москвы
+# Установка ChromeDriver
+RUN CHROME_VERSION=$(chromium --version | awk '{print $2}' | awk -F. '{print $1}') && \
+    wget https://chromedriver.storage.googleapis.com/${CHROME_VERSION}.0.0/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip && \
+    mv chromedriver /usr/bin/chromedriver && \
+    chmod +x /usr/bin/chromedriver
+
+# Настройка часового пояса
 ENV TZ=Europe/Moscow
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone    
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Копируем ChromeDriver из корня проекта в образ
-COPY chromedriver /usr/bin/chromedriver
-RUN chmod +x /usr/bin/chromedriver
-
-# Проверяем версии (для диагностики)
-RUN echo "Chromium version:" && chromium --version
-RUN echo "ChromeDriver version:" && chromedriver --version
+# Проверка версий
+RUN echo "Chromium version: $(chromium --version)" && \
+    echo "ChromeDriver version: $(chromedriver --version)"
 
 WORKDIR /app
-COPY . /app
 
-# Устанавливаем Python зависимости
+# Копирование зависимостей
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Копирование кода
+COPY . .
 
 # Настройки окружения
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
@@ -50,8 +57,7 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     DISPLAY=:99 \
     LANG=C.UTF-8 \
     LANGUAGE=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    PATH=${PATH}:/usr/bin
+    LC_ALL=C.UTF-8
 
-# Запуск приложения
-CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
+# Запуск
+CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & python main.py"]
