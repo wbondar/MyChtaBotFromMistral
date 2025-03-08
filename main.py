@@ -150,7 +150,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         options.add_argument('--disable-gpu')
         options.add_argument('--window-size=1920x1080')
         options.binary_location = '/usr/bin/chromium'
-service = Service(executable_path='/usr/bin/chromedriver')
+        service = Service(executable_path='/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
 
         try:
