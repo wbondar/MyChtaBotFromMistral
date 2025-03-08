@@ -23,12 +23,7 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     libxss1 \
     libxtst6 \
-    tzdata \  # Добавлено для часового пояса
     && rm -rf /var/lib/apt/lists/*
-
-# Настройка часового пояса Москвы
-ENV TZ=Europe/Moscow
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Копируем ChromeDriver из корня проекта в образ
 COPY chromedriver /usr/bin/chromedriver
