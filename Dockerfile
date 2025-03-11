@@ -48,5 +48,5 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
-# Перед запуском удаляем lock-файл Xvfb, чтобы избежать конфликта, затем запускаем Xvfb и бота
+# Перед запуском удаляем lock-файл Xvfb, затем запускаем Xvfb и бота
 CMD ["tini", "--", "sh", "-c", "rm -f /tmp/.X99-lock; Xvfb :99 -screen 0 1920x1080x24 & python main.py"]
