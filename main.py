@@ -178,8 +178,12 @@ def main() -> None:
     scheduler.start()
     logger.info("Планировщик запущен")
 
+    # Перед запуском polling удаляем вебхук, если он установлен, и сбрасываем ожидающие обновления
+    logger.info("Удаление вебхука (если установлен) и сброс обновлений")
+    application.bot.delete_webhook(drop_pending_updates=True)
+    
     logger.info("Запуск бота (polling)")
-    application.run_polling()  # Блокирующий вызов, здесь запускается polling
+    application.run_polling(drop_pending_updates=True)  # Блокирующий вызов polling
     logger.info("Работа бота завершена")
     scheduler.shutdown()
     logger.info("Планировщик остановлен")
