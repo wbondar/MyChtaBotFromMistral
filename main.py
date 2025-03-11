@@ -2,6 +2,10 @@ import os
 import random as rand
 import asyncio
 import logging
+import nest_asyncio
+
+# Разрешаем вложенные вызовы цикла событий
+nest_asyncio.apply()
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
@@ -36,8 +40,8 @@ random_phrases = [
     "Хватит мечтать, пора действовать!"
 ]
 
-# Хранение chat_id для рассылки сообщений и история сообщений
-chat_history = {}  # для хранения истории запросов (по chat_id)
+# Хранение истории сообщений для каждого чата
+chat_history = {}  # {chat_id: [сообщения, ...]}
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     message = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
@@ -51,7 +55,6 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
     await send_message(context, chat_id, message)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Отправляем приветственное сообщение
     await update.message.reply_text('Привет! Отправьте мне сообщение, и я перешлю его на trychatgpt.ru.')
     chat_id = update.message.chat_id
     if chat_id not in chat_history:
@@ -65,7 +68,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = update.message.text
     chat_id = update.message.chat_id
 
-    # Сохраняем историю сообщений (ограничение – последние 20 сообщений)
+    # Сохраняем историю (ограничиваем до 20 сообщений)
     if chat_id not in chat_history:
         chat_history[chat_id] = []
     chat_history[chat_id].append(user_message)
@@ -76,7 +79,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     try:
         options = webdriver.ChromeOptions()
-        # Используем классический headless-режим для стабильности
+        # Классический headless-режим
         options.add_argument('--headless')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -90,20 +93,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         driver.get(SITE_URL)
 
         wait = WebDriverWait(driver, 30)
-        # Ждем, пока на странице появится текст "ChatGPT", что говорит о полной загрузке
+        # Ждем появления ключевого слова "ChatGPT" на странице
         wait.until(lambda d: "ChatGPT" in d.page_source)
 
-        # Сохраняем количество уже существующих сообщений на странице
+        # Сохраняем количество уже имеющихся сообщений на странице
         old_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
         old_count = len(old_elements)
 
-        # Находим поле ввода и отправляем запрос
+        # Находим поле ввода и отправляем сообщение
         input_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input')))
         input_field.clear()
         input_field.send_keys(user_message)
         input_field.send_keys(Keys.RETURN)
 
-        # Ожидаем появления нового сообщения (новый элемент в списке)
+        # Ждем появления нового ответа
         def new_message_present(drv):
             new_elements = drv.find_elements(By.CSS_SELECTOR, 'div.message-content')
             return len(new_elements) > old_count
@@ -113,7 +116,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         new_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
         reply_text = new_elements[-1].text.strip()
 
-        # Если полученный ответ совпадает с исходным сообщением, уведомляем об ошибке
+        # Если полученный ответ совпадает с запросом, сообщаем об ошибке
         if reply_text == user_message:
             reply_text = "Похоже, произошла ошибка. Попробуйте еще раз."
 
@@ -135,10 +138,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             pass
 
 async def scheduled_monday_message(context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Отправка запланированного сообщения всем чатам
+    # Отправка сообщения всем чатам
     for chat_id in chat_history.keys():
         await send_scheduled_message(context, chat_id,
-                                     "Вставайте, Засранцы и давайте работайте над собой и на державу!")
+            "Вставайте, Засранцы и давайте работайте над собой и на державу!")
 
 async def scheduled_hourly_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     # Отправка случайного сообщения всем чатам
@@ -146,20 +149,25 @@ async def scheduled_hourly_message(context: ContextTypes.DEFAULT_TYPE) -> None:
         await send_random_message(context, chat_id)
 
 async def main() -> None:
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).concurrent_updates(True).build()
-
+    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # Инициализация асинхронного планировщика APScheduler
+    # Инициализируем асинхронный планировщик
     scheduler = AsyncIOScheduler(timezone="UTC")
     scheduler.add_job(scheduled_monday_message, CronTrigger(day_of_week="mon", hour=8, minute=0), args=[application.bot])
     scheduler.add_job(scheduled_hourly_message, CronTrigger(minute=0), args=[application.bot])
     scheduler.start()
 
-    # Запускаем бота через run_polling(), что исключает конфликт getUpdates
-    await application.run_polling()
+    # Асинхронный старт приложения по рекомендуемой схеме:
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+    # Ожидаем завершения работы (например, при получении сигнала остановки)
+    await application.updater.idle()
+    await application.shutdown()
+    scheduler.shutdown()
 
 if __name__ == '__main__':
     asyncio.run(main())
