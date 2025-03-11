@@ -30,7 +30,8 @@ WORKDIR /app
 COPY . /app
 
 # Устанавливаем Python зависимости
-RUN pip install --no-install-recommends -r requirements.txt
+RUN python -m pip install --upgrade pip  # Обновляем pip
+RUN pip install --no-cache-dir -r requirements.txt # Теперь можно без --no-install-recommends
 
 # Копируем скрипт для скачивания chromedriver
 COPY download_chromedriver.sh /app/
