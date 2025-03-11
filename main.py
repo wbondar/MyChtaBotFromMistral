@@ -1,6 +1,7 @@
 import os
 import random as rand
 import logging
+import subprocess
 
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
@@ -22,6 +23,19 @@ SITE_URL = 'https://trychatgpt.ru'
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Функция для логирования версий установленных программ
+def log_installed_versions() -> None:
+    try:
+        chromium_version = subprocess.check_output(["chromium", "--version"]).decode("utf-8").strip()
+        logger.info(f"Версия Chromium: {chromium_version}")
+    except Exception as e:
+        logger.error(f"Ошибка при получении версии Chromium: {str(e)}")
+    try:
+        chromedriver_version = subprocess.check_output(["chromedriver", "--version"]).decode("utf-8").strip()
+        logger.info(f"Версия ChromeDriver: {chromedriver_version}")
+    except Exception as e:
+        logger.error(f"Ошибка при получении версии ChromeDriver: {str(e)}")
 
 # Список случайных фраз для рассылки
 random_phrases = [
@@ -149,6 +163,9 @@ async def scheduled_hourly_message(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     logger.info("Запуск main()")
+    # Логируем версии установленных программ
+    log_installed_versions()
+    
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random_command))
@@ -162,7 +179,7 @@ def main() -> None:
     logger.info("Планировщик запущен")
 
     logger.info("Запуск бота (polling)")
-    application.run_polling()  # Блокирующий вызов
+    application.run_polling()  # Блокирующий вызов, здесь запускается polling
     logger.info("Работа бота завершена")
     scheduler.shutdown()
     logger.info("Планировщик остановлен")
