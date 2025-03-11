@@ -48,5 +48,5 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
-# Запуск приложения: запускаем Xvfb и затем бота
+# Запуск приложения: сначала запускаем Xvfb, затем бота
 CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & python main.py"]
