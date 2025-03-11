@@ -12,6 +12,14 @@ from selenium.common.exceptions import TimeoutException, WebDriverException, NoS
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import subprocess
+import logging
+
+# Настройка логирования
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -31,7 +39,9 @@ RANDOM_PHRASES = [
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
+    logger.info(f"Отправка сообщения в чат {chat_id}: {text}")
     message = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+    logger.info(f"Сообщение отправлено. ID сообщения: {message.message_id}")
     return message
 
 async def send_random_message(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -47,37 +57,37 @@ async def restart_railway_service(context: ContextTypes.DEFAULT_TYPE):
     """Перезапускает сервис на Railway, используя Project Token."""
     railway_token = os.getenv("RAILWAY_TOKEN")
     if not railway_token:
-        print("Ошибка: Не задан RAILWAY_TOKEN.")
+        logger.error("Ошибка: Не задан RAILWAY_TOKEN.")
         return
 
     try:
-        # Используем asyncio.to_thread для запуска блокирующей операции в отдельном потоке
-        await asyncio.to_thread(subprocess.run, ["railway", "restart"], env={"RAILWAY_TOKEN": railway_token}, check=True, capture_output=True, text=True)
-        print("Сервис Railway успешно перезапущен.")
+        logger.info("Запуск перезагрузки сервиса Railway...")
+        result = await asyncio.to_thread(subprocess.run, ["railway", "restart"], env={"RAILWAY_TOKEN": railway_token}, check=True, capture_output=True, text=True)
+        logger.info(f"Сервис Railway успешно перезапущен. Stdout: {result.stdout}")
 
     except subprocess.CalledProcessError as e:
-        print(f"Ошибка при перезапуске сервиса Railway: {e}")
-        print(f"Stdout: {e.stdout}")  # Выводим stdout
-        print(f"Stderr: {e.stderr}")  # Выводим stderr
+        logger.error(f"Ошибка при перезапуске сервиса Railway: {e}")
+        logger.error(f"Stdout: {e.stdout}")
+        logger.error(f"Stderr: {e.stderr}")
 
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Планирует отправку сообщений."""
+    logger.info(f"Планирование сообщений для чата {chat_id}")
     schedule.every().monday.at("08:00").do(send_scheduled_message, chat_id=chat_id, message="Вставайте, Засранцы и давайте работайте над собой и на державу!", context=context)
-
-    # Ежечасные случайные сообщения
     schedule.every().hour.at(":00").do(send_random_message, chat_id=chat_id, context=context)
-
-    #Добавляем задачу перезапуска
     schedule.every().day.at("03:00").do(restart_railway_service, context=context)
+    logger.info(f"Задачи для чата {chat_id} запланированы")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start."""
+    logger.info(f"Получена команда /start от пользователя {update.effective_user.id} в чате {update.message.chat_id}")
     await update.message.reply_text('Привет! Отправьте мне сообщение, и я перешлю его на trychatgpt.ru.')
     chat_id = update.message.chat_id
     schedule_messages(chat_id, context)  # Планируем сообщения
 
 async def random(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /random (для ручной отправки)."""
+    logger.info(f"Получена команда /random от пользователя {update.effective_user.id} в чате {update.message.chat_id}")
     chat_id = update.message.chat_id
     await send_random_message(chat_id, context)
 
@@ -85,58 +95,69 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Обработчик текстовых сообщений."""
     user_message = update.message.text
     chat_id = update.message.chat_id
+    logger.info(f"Получено сообщение от пользователя {update.effective_user.id} в чате {chat_id}: {user_message}")
 
     waiting_message = await update.message.reply_text("Готовлю для тебя ответ! Будь терпелив...")
+    logger.info(f"Отправлено сообщение 'Готовлю ответ...' в чат {chat_id}")
 
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless=new')
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
-        # options.add_argument('--window-size=1920x1080')  # Удаляем
-        # options.binary_location = '/usr/bin/chromium'  # Удаляем
         service = Service()
         driver = webdriver.Chrome(service=service, options=options)
+        logger.info("Драйвер Chrome инициализирован")
 
         try:
             driver.set_page_load_timeout(30)
             driver.get(SITE_URL)
+            logger.info(f"Страница {SITE_URL} загружена")
 
-            # Ждем появления поля ввода
             input_field = WebDriverWait(driver, 30).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input'))
             )
+            logger.info("Поле ввода найдено")
 
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)
+            logger.info("Сообщение отправлено в поле ввода")
 
-            # Ждем появления *последнего* ответа (с учетом возможной задержки)
             WebDriverWait(driver, 60).until(
                 lambda d: len(d.find_elements(By.CSS_SELECTOR, 'div.message-content')) > 0
             )
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
+            logger.info(f"Найдено элементов с ответами: {len(reply_elements)}")
             reply_text = reply_elements[-1].text
+            logger.info(f"Текст ответа: {reply_text}")
 
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
+            logger.info(f"Сообщение в чате {chat_id} обновлено ответом")
 
         except TimeoutException:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Превышено время ожидания ответа от ChatGPT.")
+            error_message = "Превышено время ожидания ответа от ChatGPT."
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_message)
+            logger.error(error_message)
         except NoSuchElementException:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Не удалось найти поле ввода или ответ на странице.")
-
+            error_message = "Не удалось найти поле ввода или ответ на странице."
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_message)
+            logger.error(error_message)
         except WebDriverException as e:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка WebDriver: {str(e)}')
-
+            error_message = f"Ошибка WebDriver: {e}"
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_message)
+            logger.error(error_message)
         except Exception as e:
-            print(f"Неожиданная ошибка: {e}")
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Неожиданная ошибка: {str(e)}')
+            error_message = f"Неожиданная ошибка: {e}"
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_message)
+            logger.exception(error_message) # Используем logger.exception для полной трассировки
         finally:
             driver.quit()
+            logger.info("Драйвер Chrome закрыт")
 
     except Exception as e:
-        print(f"Неожиданная ошибка: {e}")
-        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
-                                              text=f'Ошибка: {str(e)}')
+        error_message = f"Неожиданная ошибка: {e}"
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_message)
+        logger.exception(error_message) # Используем logger.exception
 
 
 async def scheduler() -> None:
