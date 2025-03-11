@@ -3,7 +3,6 @@ import random as rand
 import asyncio
 import logging
 
-from datetime import datetime
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -25,6 +24,7 @@ SITE_URL = 'https://trychatgpt.ru'
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Список случайных фраз для рассылки
 random_phrases = [
     "Андрей, держись бодрей! А то Петька отмерзнет!",
     "Ну что, заскучали? Так займитесь делом!",
@@ -36,8 +36,8 @@ random_phrases = [
     "Хватит мечтать, пора действовать!"
 ]
 
-# Хранение идентификаторов чатов для рассылки
-chat_history = {}
+# Хранение chat_id для рассылки сообщений и история сообщений
+chat_history = {}  # для хранения истории запросов (по chat_id)
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     message = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
@@ -51,12 +51,12 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
     await send_message(context, chat_id, message)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Отправляем приветственное сообщение
     await update.message.reply_text('Привет! Отправьте мне сообщение, и я перешлю его на trychatgpt.ru.')
     chat_id = update.message.chat_id
-    # Добавляем chat_id в список для рассылки, если его там ещё нет
     if chat_id not in chat_history:
         chat_history[chat_id] = []
-    
+
 async def random_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = update.message.chat_id
     await send_random_message(context, chat_id)
@@ -65,7 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = update.message.text
     chat_id = update.message.chat_id
 
-    # Сохраняем историю сообщений (ограничение – последние 20)
+    # Сохраняем историю сообщений (ограничение – последние 20 сообщений)
     if chat_id not in chat_history:
         chat_history[chat_id] = []
     chat_history[chat_id].append(user_message)
@@ -86,55 +86,59 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
         service = Service(executable_path='/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
+        driver.set_page_load_timeout(30)
+        driver.get(SITE_URL)
 
-        try:
-            driver.set_page_load_timeout(30)
-            driver.get(SITE_URL)
+        wait = WebDriverWait(driver, 30)
+        # Ждем, пока на странице появится текст "ChatGPT", что говорит о полной загрузке
+        wait.until(lambda d: "ChatGPT" in d.page_source)
 
-            # Явное ожидание появления поля ввода
-            wait = WebDriverWait(driver, 30)
-            input_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input')))
-            # Дополнительное ожидание наличия ключевого слова на странице (например, "ChatGPT")
-            wait.until(lambda d: "ChatGPT" in d.page_source)
+        # Сохраняем количество уже существующих сообщений на странице
+        old_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
+        old_count = len(old_elements)
 
-            input_field.clear()
-            input_field.send_keys(user_message)
-            input_field.send_keys(Keys.RETURN)
+        # Находим поле ввода и отправляем запрос
+        input_field = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input')))
+        input_field.clear()
+        input_field.send_keys(user_message)
+        input_field.send_keys(Keys.RETURN)
 
-            # Ожидаем появления элемента с ответом
-            reply_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div.message-content')))
-            reply_text = reply_element.text.strip()
+        # Ожидаем появления нового сообщения (новый элемент в списке)
+        def new_message_present(drv):
+            new_elements = drv.find_elements(By.CSS_SELECTOR, 'div.message-content')
+            return len(new_elements) > old_count
 
-            # Если полученный ответ совпадает с исходным запросом, уведомляем об ошибке
-            if reply_text == user_message:
-                reply_text = "Похоже, произошла ошибка. Попробуйте еще раз."
+        wait.until(new_message_present)
 
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
+        new_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
+        reply_text = new_elements[-1].text.strip()
 
-        except TimeoutException:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
-                                                  text="Превышено время ожидания ответа от ChatGPT.")
-        except NoSuchElementException:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
-                                                  text="Не удалось найти поле ввода или ответ на странице.")
-        except Exception as e:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
-                                                  text=f'Ошибка при взаимодействии с ChatGPT: {str(e)}')
-        finally:
-            try:
-                driver.quit()
-            except Exception:
-                pass
+        # Если полученный ответ совпадает с исходным сообщением, уведомляем об ошибке
+        if reply_text == user_message:
+            reply_text = "Похоже, произошла ошибка. Попробуйте еще раз."
 
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
+
+    except TimeoutException:
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
+                                              text="Превышено время ожидания ответа от ChatGPT.")
+    except NoSuchElementException:
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
+                                              text="Не удалось найти поле ввода или ответ на странице.")
     except Exception as e:
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
-                                              text=f'Ошибка: {str(e)}')
+                                              text=f'Ошибка при взаимодействии с ChatGPT: {str(e)}')
+    finally:
+        try:
+            driver.quit()
+        except Exception:
+            pass
 
 async def scheduled_monday_message(context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Отправка запланированного сообщения всем чатам, где уже был контакт
+    # Отправка запланированного сообщения всем чатам
     for chat_id in chat_history.keys():
         await send_scheduled_message(context, chat_id,
-            "Вставайте, Засранцы и давайте работайте над собой и на державу!")
+                                     "Вставайте, Засранцы и давайте работайте над собой и на державу!")
 
 async def scheduled_hourly_message(context: ContextTypes.DEFAULT_TYPE) -> None:
     # Отправка случайного сообщения всем чатам
@@ -150,24 +154,12 @@ async def main() -> None:
 
     # Инициализация асинхронного планировщика APScheduler
     scheduler = AsyncIOScheduler(timezone="UTC")
-    # Понедельник, 08:00 UTC (при необходимости скорректируйте часовой пояс)
     scheduler.add_job(scheduled_monday_message, CronTrigger(day_of_week="mon", hour=8, minute=0), args=[application.bot])
-    # Каждый час ровно (в начале часа)
     scheduler.add_job(scheduled_hourly_message, CronTrigger(minute=0), args=[application.bot])
     scheduler.start()
 
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-
-    try:
-        while True:
-            await asyncio.sleep(1)
-    finally:
-        await application.stop()
-        await application.updater.stop()
-        await application.shutdown()
-        scheduler.shutdown()
+    # Запускаем бота через run_polling(), что исключает конфликт getUpdates
+    await application.run_polling()
 
 if __name__ == '__main__':
     asyncio.run(main())
