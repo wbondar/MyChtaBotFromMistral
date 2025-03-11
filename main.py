@@ -1,6 +1,5 @@
 import os
 import random as rand
-import asyncio
 import logging
 
 from telegram import Update
@@ -40,7 +39,7 @@ random_phrases = [
 chat_history = {}  # {chat_id: [сообщения, ...]}
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
-    logger.info(f"Sending message to {chat_id}: {text}")
+    logger.info(f"Отправляю сообщение в чат {chat_id}: {text}")
     message = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
     return message
 
@@ -52,21 +51,21 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
     await send_message(context, chat_id, message)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info("Received /start command")
+    logger.info("Получена команда /start")
     await update.message.reply_text('Привет! Отправьте мне сообщение, и я перешлю его на trychatgpt.ru.')
     chat_id = update.message.chat_id
     if chat_id not in chat_history:
         chat_history[chat_id] = []
 
 async def random_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info("Received /random command")
+    logger.info("Получена команда /random")
     chat_id = update.message.chat_id
     await send_random_message(context, chat_id)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = update.message.text
     chat_id = update.message.chat_id
-    logger.info(f"Received message from {chat_id}: {user_message}")
+    logger.info(f"Получено сообщение от {chat_id}: {user_message}")
 
     if chat_id not in chat_history:
         chat_history[chat_id] = []
@@ -75,7 +74,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         chat_history[chat_id].pop(0)
 
     waiting_message = await update.message.reply_text("Готовлю для тебя ответ! Будь терпелив...")
-    logger.info("Started processing user message with Selenium")
+    logger.info("Запуск обработки сообщения с помощью Selenium")
     try:
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -88,12 +87,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         service = Service(executable_path='/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
         driver.set_page_load_timeout(30)
-        logger.info("Navigating to SITE_URL")
+        logger.info("Переход на сайт")
         driver.get(SITE_URL)
 
         wait = WebDriverWait(driver, 30)
         wait.until(lambda d: "ChatGPT" in d.page_source)
-        logger.info("Site loaded successfully")
+        logger.info("Страница успешно загружена")
 
         # Запоминаем число уже имеющихся сообщений на странице
         old_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
@@ -103,7 +102,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         input_field.clear()
         input_field.send_keys(user_message)
         input_field.send_keys(Keys.RETURN)
-        logger.info("Message sent to site, waiting for response")
+        logger.info("Сообщение отправлено на сайт, ожидаем ответ")
 
         def new_message_present(drv):
             new_elements = drv.find_elements(By.CSS_SELECTOR, 'div.message-content')
@@ -112,7 +111,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         wait.until(new_message_present)
         new_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
         reply_text = new_elements[-1].text.strip()
-        logger.info(f"Received reply: {reply_text}")
+        logger.info(f"Получен ответ: {reply_text}")
 
         if reply_text == user_message:
             reply_text = "Похоже, произошла ошибка. Попробуйте еще раз."
@@ -121,11 +120,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     except TimeoutException:
         error_msg = "Превышено время ожидания ответа от ChatGPT."
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_msg)
-        logger.error("TimeoutException occurred")
+        logger.error("Произошла ошибка TimeoutException")
     except NoSuchElementException:
         error_msg = "Не удалось найти поле ввода или ответ на странице."
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_msg)
-        logger.error("NoSuchElementException occurred")
+        logger.error("Произошла ошибка NoSuchElementException")
     except Exception as e:
         error_text = f'Ошибка при взаимодействии с ChatGPT: {str(e)}'
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=error_text)
@@ -133,23 +132,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     finally:
         try:
             driver.quit()
-            logger.info("Driver quit successfully")
+            logger.info("Браузер успешно закрыт")
         except Exception as e:
-            logger.error(f"Error quitting driver: {str(e)}")
+            logger.error(f"Ошибка при закрытии браузера: {str(e)}")
 
 async def scheduled_monday_message(context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info("Executing scheduled Monday message")
+    logger.info("Выполняется запланированное сообщение по понедельникам")
     for chat_id in chat_history.keys():
         await send_scheduled_message(context, chat_id,
                                      "Вставайте, Засранцы и давайте работайте над собой и на державу!")
 
 async def scheduled_hourly_message(context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info("Executing scheduled hourly random message")
+    logger.info("Выполняется запланированное случайное сообщение каждый час")
     for chat_id in chat_history.keys():
         await send_random_message(context, chat_id)
 
-async def main() -> None:
-    logger.info("Starting main()")
+def main() -> None:
+    logger.info("Запуск main()")
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random_command))
@@ -160,13 +159,13 @@ async def main() -> None:
     scheduler.add_job(scheduled_monday_message, CronTrigger(day_of_week="mon", hour=8, minute=0), args=[application.bot])
     scheduler.add_job(scheduled_hourly_message, CronTrigger(minute=0), args=[application.bot])
     scheduler.start()
-    logger.info("Scheduler started")
+    logger.info("Планировщик запущен")
 
-    logger.info("Starting bot polling")
-    await application.run_polling()
-    logger.info("Bot polling ended")
+    logger.info("Запуск бота (polling)")
+    application.run_polling()  # Блокирующий вызов
+    logger.info("Работа бота завершена")
     scheduler.shutdown()
-    logger.info("Scheduler shutdown")
+    logger.info("Планировщик остановлен")
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
