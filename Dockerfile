@@ -48,5 +48,8 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
+# Удаляем файл блокировки перед запуском Xvfb
+RUN rm -f /tmp/.X99-lock
+
 # Запуск приложения
 CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
