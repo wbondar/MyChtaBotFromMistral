@@ -111,6 +111,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if reply_elements:
                 reply_text = reply_elements[-1].text  # Берем последний ответ
                 logging.info(f"Received reply from site: {reply_text}")
+                if reply_text.strip() == user_message.strip():
+                    raise Exception("Полученный ответ совпадает с запросом.")
                 # Редактируем сообщение "Готовлю ответ..." и вставляем туда текст ответа
                 await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
 
