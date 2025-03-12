@@ -1,7 +1,8 @@
-import os #
+import os
 import random as rand
 import schedule
 import time
+import logging
 from telegram import Update, constants
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from selenium import webdriver
@@ -133,7 +134,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
                                               text=f'Ошибка: {str(e)}')
 
-
 async def scheduler() -> None:
     """Планировщик задач."""
     while True:
@@ -164,4 +164,5 @@ async def main() -> None:
         await application.shutdown()
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
