@@ -1,4 +1,4 @@
-#import os
+import os
 import random as rand
 import schedule
 import time
@@ -18,8 +18,8 @@ SITE_URL = 'https://trychatgpt.ru'
 random_phrases = [
     "Андрей, держись бодрей! А то Петька отмерзнет!",
     "Ну что, заскучали? Так займитесь делом!",
-    "Эй, бездельники!  Работа сама себя не сделает!",
-    "Солнце ещё высоко!  Вперёд, к свершениям!",
+    "Эй, бездельники! Работа сама себя не сделает!",
+    "Солнце ещё высоко! Вперёд, к свершениям!",
     "Кто рано встаёт, тому... тому работать надо!",
     "Не ленись, а то превратишься в ленивца!",
     "Работа не волк, но и без неё никак!",
@@ -44,13 +44,10 @@ async def send_scheduled_message(context: ContextTypes.DEFAULT_TYPE, chat_id: in
 
 def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Планирует отправку сообщений."""
-
     schedule.every().monday.at("08:00").do(
         send_scheduled_message, context=context, chat_id=chat_id,
         message="Вставайте, Засранцы и давайте работайте над собой и на державу!"
     )
-
-    # Ежечасные случайные сообщения
     schedule.every().hour.at(":00").do(
         send_random_message, context=context, chat_id=chat_id
     )
@@ -164,7 +161,7 @@ async def main() -> None:
 
     try:
         while True:
-            await asyncio.sleep(1) #Просто чтобы не загружать процессор
+            await asyncio.sleep(1) # Просто чтобы не загружать процессор
     finally:
         # Корректно завершаем работу при остановке
         await application.stop()
