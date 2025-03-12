@@ -110,6 +110,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
                 reply_text = reply_elements[-1].text  # Берем последний ответ
+                logging.info(f"Received reply from site: {reply_text}")
                 # Редактируем сообщение "Готовлю ответ..." и вставляем туда текст ответа
                 await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
 
@@ -117,11 +118,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 raise Exception("Ответ не найден.")
 
         except TimeoutException:
+            logging.error("Превышено время ожидания ответа от ChatGPT.")
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Превышено время ожидания ответа от ChatGPT.")
 
         except NoSuchElementException:
+            logging.error("Не удалось найти поле ввода или ответ на странице.")
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Не удалось найти поле ввода или ответ на странице.")
         except Exception as e:
+            logging.error(f"Ошибка при взаимодействии с ChatGPT: {str(e)}")
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с ChatGPT: {str(e)}')
         finally:
             if 'driver' in locals():
@@ -131,6 +135,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                     pass  # Игнорируем ошибки при закрытии
 
     except Exception as e:
+        logging.error(f"Ошибка: {str(e)}")
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
                                               text=f'Ошибка: {str(e)}')
 
