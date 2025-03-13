@@ -9,9 +9,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, ElementNotInteractableException
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import asyncio
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -95,18 +93,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             driver.set_page_load_timeout(30)  # Таймаут загрузки страницы
             driver.get(SITE_URL)
+            await asyncio.sleep(15)  # Ждем загрузки
 
-            # Используем явное ожидание для загрузки страницы
-            WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input')))
+            # Проверяем, загрузилась ли страница (простой способ)
+            if "ChatGPT" not in driver.page_source:
+                raise Exception("Страница не загружена корректно.")
 
             input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)  # Отправляем сообщение
-
-            # Используем явное ожидание для получения ответа
-            WebDriverWait(driver, 25).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.message-content'))
-            )
+            await asyncio.sleep(20)  # Увеличиваем время ожидания ответа
 
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
@@ -128,11 +124,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         except NoSuchElementException:
             logging.error("Не удалось найти поле ввода или ответ на странице.")
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Не удалось найти поле ввода или ответ на странице.")
-
-        except ElementNotInteractableException:
-            logging.error("Элемент не может быть использован. Возможно, он не виден или не загружен.")
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Элемент не может быть использован. Попробуйте позже.")
-
         except Exception as e:
             logging.error(f"Ошибка при взаимодействии с ChatGPT: {str(e)}")
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с ChatGPT: {str(e)}')
