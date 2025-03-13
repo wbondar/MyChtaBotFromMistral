@@ -1,7 +1,6 @@
-#import os
+import os
 import random as rand
 import schedule
-import time
 import logging
 from telegram import Update, constants
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
