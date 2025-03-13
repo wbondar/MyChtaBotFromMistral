@@ -9,6 +9,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException
 import asyncio
 
@@ -93,16 +95,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             driver.set_page_load_timeout(30)  # Таймаут загрузки страницы
             driver.get(SITE_URL)
-            await asyncio.sleep(15)  # Ждем загрузки
 
-            # Проверяем, загрузилась ли страница (простой способ)
-            if "ChatGPT" not in driver.page_source:
-                raise Exception("Страница не загружена корректно.")
+            # Используем явное ожидание для загрузки страницы
+            WebDriverWait(driver, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input')))
 
             input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)  # Отправляем сообщение
-            await asyncio.sleep(20)  # Увеличиваем время ожидания ответа
+
+            # Используем явное ожидание для получения ответа
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.message-content'))
+            )
 
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
