@@ -102,7 +102,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)  # Отправляем сообщение
-            await asyncio.sleep(5)  # Ждем ответа
+            await asyncio.sleep(10)  # Увеличиваем время ожидания ответа
 
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
