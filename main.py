@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, ElementNotInteractableException
 import asyncio
+import speech_recognition as sr
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -88,7 +89,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
-        options.add_argument('--window-size=1920x1080')
+        options.add_argument('--window-size=1924x1080')
         options.binary_location = '/usr/bin/chromium'
 
         service = Service(executable_path='/usr/bin/chromedriver')
@@ -150,6 +151,41 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id,
                                               text=f'Ошибка: {str(e)}')
 
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик голосовых сообщений."""
+    chat_id = update.message.chat_id
+    voice = update.message.voice
+
+    # Отправляем сообщение "Готовлю ответ..."
+    waiting_message = await update.message.reply_text("Готовлю для тебя ответ! Будь терпелив...")
+
+    try:
+        # Скачиваем голосовое сообщение
+        voice_file = await context.bot.get_file(voice.file_id)
+        voice_path = f"/tmp/{voice.file_id}.ogg"
+        await voice_file.download_to_drive(voice_path)
+
+        # Преобразуем голосовое сообщение в текст
+        recognizer = sr.Recognizer()
+        with sr.AudioFile(voice_path) as source:
+            audio_data = recognizer.record(source)
+            text = recognizer.recognize_google(audio_data, language="ru-RU")
+
+        # Отправляем текст на сайт
+        await handle_message(update, context, user_message=text)
+
+    except sr.UnknownValueError:
+        logging.error("Не удалось распознать речь.")
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Не удалось распознать речь.")
+
+    except sr.RequestError as e:
+        logging.error(f"Ошибка сервиса распознавания речи: {str(e)}")
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f"Ошибка сервиса распознавания речи: {str(e)}")
+
+    except Exception as e:
+        logging.error(f"Ошибка: {str(e)}")
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка: {str(e)}')
+
 async def scheduler() -> None:
     """Планировщик задач."""
     while True:
@@ -163,6 +199,7 @@ async def main() -> None:
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('random', random))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(filters.VOICE & ~filters.COMMAND, handle_voice))
 
     asyncio.create_task(scheduler())  # Запускаем планировщик в отдельной задаче
 
