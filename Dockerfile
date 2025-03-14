@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     libxrender1 \
     libxss1 \
     libxtst6 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем ChromeDriver из корня проекта в образ
