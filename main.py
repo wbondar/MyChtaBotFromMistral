@@ -2,7 +2,7 @@ import os
 import random as rand
 import schedule
 import logging
-from telegram import Update, constants
+from telegram import Update, Message
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -180,7 +180,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         # Создаем новое текстовое сообщение и отправляем его в обработчик текстовых сообщений
         fake_update = Update(
             update_id=update.update_id,
-            message=update.message.text.replace(update.message.text, text)
+            message=Message(
+                message_id=update.message.message_id,
+                date=update.message.date,
+                chat=update.message.chat,
+                text=text
+            )
         )
         await handle_message(fake_update, context)
 
