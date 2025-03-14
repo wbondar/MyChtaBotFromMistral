@@ -12,7 +12,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, ElementNotInteractableException
 import asyncio
-from bs4 import BeautifulSoup
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -106,17 +105,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             # Используем явное ожидание для получения ответа
             WebDriverWait(driver, 30).until(
                 lambda d: d.find_elements(By.CSS_SELECTOR, 'div.message-content') and
-                           d.find_elements(By.CSS_SELECTOR, 'div.message-content')[-1].is_displayed()
+                           d.find_elements(By.CSS_SELECTOR, 'div.message-content')[-1].is_displayed() and
+                           d.find_elements(By.CSS_SELECTOR, 'div.message-content')[-1].text.strip() != user_message.strip()
             )
 
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
-                reply_html = reply_elements[-1].get_attribute('outerHTML')
-                reply_text = BeautifulSoup(reply_html, 'html.parser').get_text(separator="\n")
+                reply_text = reply_elements[-1].text  # Берем последний ответ
                 logging.info(f"Received reply from site: {reply_text}")
                 logging.info(f"Page source: {driver.page_source[:1000]}")  # Логируем часть HTML
-                if reply_text.strip() == user_message.strip():
-                    raise Exception("Полученный ответ совпадает с запросом.")
                 # Редактируем сообщение "Готовлю ответ..." и вставляем туда текст ответа
                 await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
 
