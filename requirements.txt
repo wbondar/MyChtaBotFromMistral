@@ -4,3 +4,4 @@ schedule==1.1.0
 pytz==2023.3
 httpx==0.25.0
 SpeechRecognition==3.9.0
+pydub==0.25.1
