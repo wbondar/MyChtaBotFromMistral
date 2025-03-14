@@ -177,13 +177,10 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             audio_data = recognizer.record(source)
             text = recognizer.recognize_google(audio_data, language="ru-RU")
 
-        # Создаем новое текстовое сообщение и отправляем его в обработчик текстовых сообщений
-        new_message = Message(
-            message_id=update.message.message_id,
-            date=update.message.date,
-            chat=update.message.chat,
-            text=text
-        )
+        # Используем существующий контекст для отправки нового текстового сообщения
+        new_message = await context.bot.send_message(chat_id=chat_id, text=text)
+
+        # Создаем новый объект Update с текстом
         new_update = Update(
             update_id=update.update_id,
             message=new_message
