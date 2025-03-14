@@ -57,7 +57,7 @@ def schedule_messages(chat_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start."""
-    await update.message.reply_text('Привет! Отправьте мне сообщение, и я перешлю его на trychatgpt.ru.')
+    await update.message.reply_text('Опаньки!!! Кого я вижу!😁😜 Ну валяй, задавай свои вопросы...')
     chat_id = update.message.chat_id
     schedule_messages(chat_id, context)  # Планируем сообщения
 
