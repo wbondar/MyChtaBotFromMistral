@@ -69,7 +69,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = update.message.text
     chat_id = update.message.chat_id
 
-    # История сообщений (не используется в текущей логике, но может пригодиться)
+    # История сообщений
     if chat_id not in chat_history:
         chat_history[chat_id] = []
     chat_history[chat_id].append(user_message)
@@ -114,6 +114,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_text = reply_elements[-1].text  # Берем последний ответ
                 logging.info(f"Received reply from site: {reply_text}")
                 logging.info(f"Page source: {driver.page_source[:1000]}")  # Логируем часть HTML
+
+                # Проверяем, есть ли в ответе ссылки или HTML-теги
+                if "<a" in reply_text or "<li>" in reply_text:
+                    reply_text = " ".join(reply_text.split())  # Убираем лишние пробелы и переносы строк
+
                 # Редактируем сообщение "Готовлю ответ..." и вставляем туда текст ответа
                 await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
 
