@@ -157,9 +157,6 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     chat_id = update.message.chat_id
     voice = update.message.voice
 
-    # Отправляем сообщение "Готовлю ответ..."
-    waiting_message = await update.message.reply_text("Готовлю для тебя ответ! Будь терпелив...")
-
     try:
         # Скачиваем голосовое сообщение
         voice_file = await context.bot.get_file(voice.file_id)
@@ -189,15 +186,15 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     except sr.UnknownValueError:
         logging.error("Не удалось распознать речь.")
-        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Не удалось распознать речь.")
+        await context.bot.send_message(chat_id=chat_id, text="Не удалось распознать речь.")
 
     except sr.RequestError as e:
         logging.error(f"Ошибка сервиса распознавания речи: {str(e)}")
-        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f"Ошибка сервиса распознавания речи: {str(e)}")
+        await context.bot.send_message(chat_id=chat_id, text=f"Ошибка сервиса распознавания речи: {str(e)}")
 
     except Exception as e:
         logging.error(f"Ошибка: {str(e)}")
-        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка: {str(e)}')
+        await context.bot.send_message(chat_id=chat_id, text=f'Ошибка: {str(e)}')
 
 async def scheduler() -> None:
     """Планировщик задач."""
