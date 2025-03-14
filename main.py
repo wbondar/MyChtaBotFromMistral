@@ -13,6 +13,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, ElementNotInteractableException
 import asyncio
 import speech_recognition as sr
+from pydub import AudioSegment
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 SITE_URL = 'https://trychatgpt.ru'
@@ -165,9 +166,14 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         voice_path = f"/tmp/{voice.file_id}.ogg"
         await voice_file.download_to_drive(voice_path)
 
+        # Конвертируем OGG в WAV
+        audio = AudioSegment.from_ogg(voice_path)
+        wav_path = f"/tmp/{voice.file_id}.wav"
+        audio.export(wav_path, format="wav")
+
         # Преобразуем голосовое сообщение в текст
         recognizer = sr.Recognizer()
-        with sr.AudioFile(voice_path) as source:
+        with sr.AudioFile(wav_path) as source:
             audio_data = recognizer.record(source)
             text = recognizer.recognize_google(audio_data, language="ru-RU")
 
