@@ -33,6 +33,7 @@ RUN chmod +x /usr/bin/chromedriver
 # Проверяем версии (для диагностики)
 RUN echo "Chromium version:" && chromium --version
 RUN echo "ChromeDriver version:" && chromedriver --version
+RUN ffmpeg -version
 
 WORKDIR /app
 COPY . /app
