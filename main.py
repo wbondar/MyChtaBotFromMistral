@@ -177,8 +177,12 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             audio_data = recognizer.record(source)
             text = recognizer.recognize_google(audio_data, language="ru-RU")
 
-        # Отправляем текст на сайт
-        await handle_message(update, context, user_message=text)
+        # Создаем новое текстовое сообщение и отправляем его в обработчик текстовых сообщений
+        fake_update = Update(
+            update_id=update.update_id,
+            message=update.message.text.replace(update.message.text, text)
+        )
+        await handle_message(fake_update, context)
 
     except sr.UnknownValueError:
         logging.error("Не удалось распознать речь.")
