@@ -166,14 +166,14 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         voice_path = f"/tmp/{voice.file_id}.ogg"
         await voice_file.download_to_drive(voice_path)
 
-        # Конвертируем OGG в WAV
+        # Конвертируем OGG в MP3
         audio = AudioSegment.from_ogg(voice_path)
-        wav_path = f"/tmp/{voice.file_id}.wav"
-        audio.export(wav_path, format="wav")
+        mp3_path = f"/tmp/{voice.file_id}.mp3"
+        audio.export(mp3_path, format="mp3")
 
         # Преобразуем голосовое сообщение в текст
         recognizer = sr.Recognizer()
-        with sr.AudioFile(wav_path) as source:
+        with sr.AudioFile(mp3_path) as source:
             audio_data = recognizer.record(source)
             text = recognizer.recognize_google(audio_data, language="ru-RU")
 
