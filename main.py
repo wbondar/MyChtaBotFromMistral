@@ -123,7 +123,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
 
                 # Удаляем сообщение "Готовлю ответ..."
-                await context.bot.delete_message(chat_id=chat_id, message_id=update.message.message_id)
+                await context.bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
 
             else:
                 raise Exception("Ответ не найден.")
