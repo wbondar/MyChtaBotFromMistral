@@ -53,9 +53,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             driver.get(SITE_URL)
 
             # Используем явное ожидание для загрузки страницы
-            WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea#input')))
+            WebDriverWait(driver, 40).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea[placeholder="Введите сообщение"]')))
 
-            input_field = driver.find_element(By.CSS_SELECTOR, 'textarea#input')
+            input_field = driver.find_element(By.CSS_SELECTOR, 'textarea[placeholder="Введите сообщение"]')
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)  # Отправляем сообщение
 
@@ -70,7 +70,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if reply_elements:
                 reply_text = reply_elements[-1].text  # Берем последний ответ
                 logging.info(f"Received reply from site: {reply_text}")
-                logging.info(f"Page source: {driver.page_source[:2000]}")  # Логируем часть HTML
+                logging.info(f"Page source: {driver.page_source[:1000]}")  # Логируем часть HTML
                 # Редактируем сообщение "Готовлю ответ..." и вставляем туда текст ответа
                 await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
 
