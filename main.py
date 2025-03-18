@@ -51,13 +51,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             driver.set_page_load_timeout(60)  # Увеличиваем таймаут загрузки страницы
             driver.get(SITE_URL)
+            logging.info("Page loaded successfully.")
 
             # Используем явное ожидание для загрузки страницы
             WebDriverWait(driver, 40).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea[placeholder="Введите сообщение"]')))
+            logging.info("Input field located successfully.")
+
+            # Проверка на наличие всплывающих окон
+            try:
+                accept_button = driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Accept cookies"]')
+                accept_button.click()
+                logging.info("Accepted cookies.")
+            except NoSuchElementException:
+                logging.info("No cookie consent found.")
 
             input_field = driver.find_element(By.CSS_SELECTOR, 'textarea[placeholder="Введите сообщение"]')
             input_field.send_keys(user_message)
             input_field.send_keys(Keys.RETURN)  # Отправляем сообщение
+            logging.info("Message sent to input field.")
 
             # Используем явное ожидание для получения ответа
             WebDriverWait(driver, 60).until(
@@ -65,6 +76,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                            d.find_elements(By.CSS_SELECTOR, 'div.message-content')[-1].is_displayed() and
                            d.find_elements(By.CSS_SELECTOR, 'div.message-content')[-1].text.strip() != user_message.strip()
             )
+            logging.info("Response received from site.")
 
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
