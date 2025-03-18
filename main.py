@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, ElementNotInteractableException
+from selenium.common.exceptions import TimeoutException, WebDriverException, NoSuchElementException, ElementNotInteractableException, StaleElementReferenceException
 import asyncio
 import speech_recognition as sr
 from pydub import AudioSegment
@@ -78,6 +78,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             )
             logging.info("Response received from site.")
 
+            # Повторное получение элемента перед взаимодействием
             reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
             if reply_elements:
                 reply_text = reply_elements[-1].text  # Берем последний ответ
@@ -100,6 +101,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         except ElementNotInteractableException:
             logging.error("Элемент не может быть использован. Возможно, он не виден или не загружен.")
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Элемент не может быть использован. Попробуйте позже.")
+
+        except StaleElementReferenceException:
+            logging.error("Элемент больше не присутствует в DOM. Попробуем получить его снова.")
+            # Повторное получение элемента
+            reply_elements = driver.find_elements(By.CSS_SELECTOR, 'div.message-content')
+            if reply_elements:
+                reply_text = reply_elements[-1].text  # Берем последний ответ
+                await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
+            else:
+                raise Exception("Ответ не найден после повторного получения элемента.")
 
         except Exception as e:
             logging.error(f"Ошибка при взаимодействии с ChatGPT: {str(e)}")
