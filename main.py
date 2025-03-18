@@ -29,7 +29,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     """Обработчик текстовых сообщений."""
     user_message = update.message.text
     chat_id = update.message.chat_id
-
     # Удаляем символы новой строки из сообщения
     user_message = user_message.replace('\n', ' ')
 
@@ -52,6 +51,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             driver.set_page_load_timeout(60)  # Увеличиваем таймаут загрузки страницы
             driver.get(SITE_URL)
             logging.info("Page loaded successfully.")
+            logging.info(f"Page source: {driver.page_source[:1000]}")  # Логируем часть HTML
 
             # Используем явное ожидание для загрузки страницы
             WebDriverWait(driver, 40).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'textarea[placeholder="Введите сообщение"]')))
