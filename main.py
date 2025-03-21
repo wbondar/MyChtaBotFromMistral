@@ -1,14 +1,18 @@
 import os
 import logging
 import asyncio
+from datetime import datetime
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from openai import OpenAI
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
+from message_counter import update_message_counter, get_message_count, reset_daily_counters
+from user_manager import add_user, get_all_users
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GITHUB_API_KEY = os.getenv("GitHubAPIKey")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))  # Ваш Telegram ID
 
 client = OpenAI(
     base_url="https://models.inference.ai.azure.com",
@@ -22,12 +26,20 @@ async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: s
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик команды /start."""
-    await update.message.reply_text('Привет! Задавай свои вопросы...')
+    chat_id = update.message.chat_id
+    username = update.message.from_user.username
+    add_user(chat_id, username)
+
+    message_count = get_message_count(chat_id)
+    await update.message.reply_text(f'Привет! Задавай свои вопросы... Счетчик сообщений за день - {message_count} шт.')
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик текстовых сообщений."""
     user_message = update.message.text
     chat_id = update.message.chat_id
+
+    # Обновляем счетчик сообщений
+    update_message_counter(chat_id)
 
     # Удаляем символы новой строки из сообщения
     user_message = user_message.replace('\n', ' ')
@@ -50,6 +62,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Выберите формат ответа:", reply_markup=reply_markup)
+
+async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработчик команды для отображения списка пользователей."""
+    if update.message.from_user.id != ADMIN_ID:
+        await update.message.reply_text("У вас нет доступа к этой команде.")
+        return
+
+    users = get_all_users()
+    user_list = "\n".join(f"{username} (ID: {user_id})" for user_id, username in users.items())
+    await update.message.reply_text(f"Количество пользователей: {len(users)}\n\n{user_list}")
+
+async def reset_counters(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Сбрасывает счетчики сообщений каждый день в 03:00."""
+    reset_daily_counters()
 
 async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик таймаута."""
@@ -182,6 +208,10 @@ async def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.VOICE & ~filters.COMMAND, handle_voice))
     application.add_handler(CallbackQueryHandler(button))
+    application.add_handler(CommandHandler('users', list_users))
+
+    # Устанавливаем ежедневный сброс счетчиков в 03:00
+    application.job_queue.run_daily(reset_counters, time=datetime.time(hour=3, minute=0))
 
     await application.initialize()
     await application.start()
