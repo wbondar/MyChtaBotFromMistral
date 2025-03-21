@@ -1,7 +1,7 @@
 import os
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, time
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from openai import OpenAI
@@ -211,7 +211,7 @@ async def main() -> None:
     application.add_handler(CommandHandler('users', list_users))
 
     # Устанавливаем ежедневный сброс счетчиков в 03:00
-    application.job_queue.run_daily(reset_counters, time=datetime.time(hour=3, minute=0))
+    application.job_queue.run_daily(reset_counters, time=time(hour=3, minute=0))
 
     await application.initialize()
     await application.start()
