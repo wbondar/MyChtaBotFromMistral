@@ -31,7 +31,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     add_user(chat_id, username)
 
     message_count = get_message_count(chat_id)
-    await update.message.reply_text(f'Привет! Задавай свои вопросы... Счетчик сообщений за день - {message_count} шт.')
+    await update.message.reply_text(f'Привет! Задавай свои вопросы...')
+
+    # Добавляем кнопку меню для админа
+    if chat_id == ADMIN_ID:
+        keyboard = [
+            [InlineKeyboardButton("Меню", callback_data="menu")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("Счетчик сообщений за день - {message_count} шт.", reply_markup=reply_markup)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик текстовых сообщений."""
@@ -133,6 +141,20 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     user_message = context.user_data['user_message'].get(chat_id)
 
+    if query.data == "menu":
+        # Отправляем сообщение с меню для админа
+        if chat_id == ADMIN_ID:
+            keyboard = [
+                [InlineKeyboardButton("Счетчик сообщений", callback_data="message_count")],
+                [InlineKeyboardButton("Количество пользователей", callback_data="user_count")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text("Выберите опцию:", reply_markup=reply_markup)
+        else:
+            await query.answer("У вас нет доступа к этому меню.")
+        await query.answer()
+        return
+
     # Отправляем сообщение с обратным отсчетом
     waiting_message = await query.edit_message_text("🛠️⏰Готовлю для тебя ответ! Будь терпелив...")
 
@@ -163,6 +185,13 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         elif query.data == "both":
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=reply_text)
             await send_voice_message(context, chat_id, reply_text)
+        elif query.data == "message_count":
+            message_count = get_message_count(chat_id)
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f"Счетчик сообщений за день: {message_count} шт.")
+        elif query.data == "user_count":
+            users = get_all_users()
+            user_list = "\n".join(f"{username} (ID: {user_id})" for user_id, username in users.items())
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f"Количество пользователей: {len(users)}\n\n{user_list}")
 
     except Exception as e:
         logging.error(f"Ошибка при взаимодействии с GitHub API: {str(e)}")
