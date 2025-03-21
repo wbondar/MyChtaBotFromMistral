@@ -39,7 +39,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             [InlineKeyboardButton("Меню", callback_data="menu")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("Счетчик сообщений за день - {message_count} шт.", reply_markup=reply_markup)
+        await update.message.reply_text(f"Счетчик сообщений за день: {message_count} шт.", reply_markup=reply_markup)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик текстовых сообщений."""
