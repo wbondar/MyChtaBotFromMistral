@@ -55,9 +55,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = user_message.replace('\n', ' ')
 
     # Инициализируем user_data, если он не существует
-    if context.user_data is None:
-        context.user_data = {}
-
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
@@ -78,15 +75,8 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = context.job.chat_id
     message_id = context.job.data
 
-    # Инициализируем user_data, если он не существует
-    if context.user_data is None:
-        context.user_data = {}
-
-    if 'user_message' not in context.user_data:
-        context.user_data['user_message'] = {}
-
     # Получаем сообщение пользователя из user_data
-    user_message = context.user_data['user_message'].get(chat_id)
+    user_message = context.user_data.get('user_message', {}).get(chat_id)
 
     try:
         # Отправляем запрос на HTML файл для получения ответа от Puter.js
@@ -97,6 +87,9 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
 
         reply_text = global_response
         logging.info(f"Received reply from Puter.js: {reply_text}")
+
+        if not reply_text.strip():
+            raise ValueError("Message text is empty")
 
         # Отправляем текст и голос
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=reply_text)
@@ -111,14 +104,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     chat_id = query.message.chat_id
 
-    # Инициализируем user_data, если он не существует
-    if context.user_data is None:
-        context.user_data = {}
-
-    if 'user_message' not in context.user_data:
-        context.user_data['user_message'] = {}
-
-    user_message = context.user_data['user_message'].get(chat_id)
+    # Получаем сообщение пользователя из user_data
+    user_message = context.user_data.get('user_message', {}).get(chat_id)
 
     # Отправляем сообщение с обратным отсчетом
     waiting_message = await query.edit_message_text("🛠️⏰Готовлю для тебя ответ! Будь терпелив...")
