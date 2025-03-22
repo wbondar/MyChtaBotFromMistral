@@ -1,20 +1,41 @@
 import os
 import logging
 import asyncio
+import json
+import http.server
+import socketserver
+import threading
+import webbrowser
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
-from openai import OpenAI
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-GITHUB_API_KEY = os.getenv("GitHubAPIKey")
 
-client = OpenAI(
-    base_url="https://models.inference.ai.azure.com",
-   # base_url="https://openrouter.ai/api/v1",
-    api_key=GITHUB_API_KEY,
-)
+# Путь к HTML файлу
+HTML_FILE_PATH = "puter_ai.html"
+
+# Порт для HTTP сервера
+PORT = 8000
+
+# Глобальная переменная для хранения ответа
+global_response = ""
+
+class RequestHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.path = HTML_FILE_PATH
+        return http.server.SimpleHTTPRequestHandler.do_GET(self)
+
+def start_server():
+    handler = RequestHandler
+    with socketserver.TCPServer(("", PORT), handler) as httpd:
+        print(f"Serving at port {PORT}")
+        httpd.serve_forever()
+
+def open_html_file():
+    webbrowser.open(f"http://localhost:{PORT}")
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
@@ -68,31 +89,22 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = context.user_data['user_message'].get(chat_id)
 
     try:
-        # Используем OpenAI API для получения ответа от ИИ
-        response = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_message},
-            ],
-            model="gpt-4o",
-            temperature=1.0,
-            top_p=1.0,
-            max_tokens=1000,
-        )
+        # Отправляем запрос на HTML файл для получения ответа от Puter.js
+        global global_response
+        global_response = ""
+        open_html_file()
+        await asyncio.sleep(5)  # Даем время для получения ответа
 
-        reply_text = response.choices[0].message.content.strip()
-        logging.info(f"Received reply from GitHub API: {reply_text}")
+        reply_text = global_response
+        logging.info(f"Received reply from Puter.js: {reply_text}")
 
         # Отправляем текст и голос
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=reply_text)
         await send_voice_message(context, chat_id, reply_text)
 
     except Exception as e:
-        logging.error(f"Ошибка при взаимодействии с GitHub API: {str(e)}")
-        if "RateLimitReached" in str(e):
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Превышен лимит запросов. Пожалуйста, попробуйте позже.")
-        else:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с GitHub API: {str(e)}')
+        logging.error(f"Ошибка при взаимодействии с Puter.js: {str(e)}")
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с Puter.js: {str(e)}')
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик нажатий на кнопки."""
@@ -115,20 +127,14 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.job_queue.run_once(callback_timeout, 0, chat_id=chat_id, data=waiting_message.message_id)
 
     try:
-        # Используем OpenAI API для получения ответа от ИИ
-        response = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": user_message},
-            ],
-            model="gpt-4o",
-            temperature=1.0,
-            top_p=1.0,
-            max_tokens=1000,
-        )
+        # Отправляем запрос на HTML файл для получения ответа от Puter.js
+        global global_response
+        global_response = ""
+        open_html_file()
+        await asyncio.sleep(5)  # Даем время для получения ответа
 
-        reply_text = response.choices[0].message.content.strip()
-        logging.info(f"Received reply from GitHub API: {reply_text}")
+        reply_text = global_response
+        logging.info(f"Received reply from Puter.js: {reply_text}")
 
         if query.data == "voice":
             await context.bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
@@ -140,11 +146,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await send_voice_message(context, chat_id, reply_text)
 
     except Exception as e:
-        logging.error(f"Ошибка при взаимодействии с GitHub API: {str(e)}")
-        if "RateLimitReached" in str(e):
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Превышен лимит запросов. Пожалуйста, попробуйте позже.")
-        else:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с GitHub API: {str(e)}')
+        logging.error(f"Ошибка при взаимодействии с Puter.js: {str(e)}")
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с Puter.js: {str(e)}')
 
     await query.answer()
 
@@ -183,6 +186,11 @@ async def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.VOICE & ~filters.COMMAND, handle_voice))
     application.add_handler(CallbackQueryHandler(button))
+
+    # Запускаем HTTP сервер в отдельном потоке
+    server_thread = threading.Thread(target=start_server)
+    server_thread.daemon = True
+    server_thread.start()
 
     await application.initialize()
     await application.start()
