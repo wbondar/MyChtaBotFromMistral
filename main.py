@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from openai import OpenAI
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
-from message_counter import update_message_counter, get_message_count, reset_daily_counters
+from message_counter import update_message_counter, get_message_count, reset_daily_counters, init_db
 from user_manager import add_user, get_all_users
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
