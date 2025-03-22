@@ -76,6 +76,9 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     message_id = context.job.data
 
     # Убедимся, что user_data инициализирован
+    if context.user_data is None:
+        context.user_data = {}
+
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
@@ -91,10 +94,15 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
         # Отправляем запрос на HTML файл для получения ответа от Puter.js
         global global_response
         global_response = ""
+
+        # Открываем HTML файл в браузере и отправляем сообщение
         open_html_file()
         await asyncio.sleep(5)  # Даем время для получения ответа
 
-        reply_text = global_response
+        # Используем JavaScript для получения ответа
+        response = await asyncio.get_event_loop().run_in_executor(None, get_puter_response, user_message)
+
+        reply_text = response
         logging.info(f"Received reply from Puter.js: {reply_text}")
 
         if not reply_text.strip():
@@ -107,6 +115,19 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logging.error(f"Ошибка при взаимодействии с Puter.js: {str(e)}")
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с Puter.js: {str(e)}')
+
+def get_puter_response(prompt):
+    # Открываем HTML файл в браузере и отправляем сообщение
+    window = webbrowser.get().open(f"http://localhost:{PORT}")
+    window.postMessage({'prompt': prompt}, '*')
+
+    # Ждем ответа от JavaScript
+    response = None
+    while response is None:
+        event = window.receive_message()
+        if event and 'response' in event.data:
+            response = event.data['response']
+    return response
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик нажатий на кнопки."""
@@ -136,10 +157,15 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         # Отправляем запрос на HTML файл для получения ответа от Puter.js
         global global_response
         global_response = ""
+
+        # Открываем HTML файл в браузере и отправляем сообщение
         open_html_file()
         await asyncio.sleep(5)  # Даем время для получения ответа
 
-        reply_text = global_response
+        # Используем JavaScript для получения ответа
+        response = await asyncio.get_event_loop().run_in_executor(None, get_puter_response, user_message)
+
+        reply_text = response
         logging.info(f"Received reply from Puter.js: {reply_text}")
 
         if query.data == "voice":
