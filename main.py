@@ -5,7 +5,9 @@ import json
 import http.server
 import socketserver
 import threading
-import webbrowser
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from text_to_speech import send_voice_message
@@ -33,9 +35,6 @@ def start_server():
     with socketserver.TCPServer(("", PORT), handler) as httpd:
         print(f"Serving at port {PORT}")
         httpd.serve_forever()
-
-def open_html_file():
-    webbrowser.open(f"http://localhost:{PORT}")
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
@@ -76,9 +75,6 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     message_id = context.job.data
 
     # Убедимся, что user_data инициализирован
-    if context.user_data is None:
-        context.user_data = {}
-
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
@@ -91,15 +87,7 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     try:
-        # Отправляем запрос на HTML файл для получения ответа от Puter.js
-        global global_response
-        global_response = ""
-
-        # Открываем HTML файл в браузере и отправляем сообщение
-        open_html_file()
-        await asyncio.sleep(5)  # Даем время для получения ответа
-
-        # Используем JavaScript для получения ответа
+        # Используем Selenium для выполнения JavaScript кода
         response = await asyncio.get_event_loop().run_in_executor(None, get_puter_response, user_message)
 
         reply_text = response
@@ -117,17 +105,32 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с Puter.js: {str(e)}')
 
 def get_puter_response(prompt):
-    # Открываем HTML файл в браузере и отправляем сообщение
-    window = webbrowser.get().open(f"http://localhost:{PORT}")
-    window.postMessage({'prompt': prompt}, '*')
+    # Инициализируем Selenium WebDriver
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')  # Запускаем в headless режиме
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
-    # Ждем ответа от JavaScript
-    response = None
-    while response is None:
-        event = window.receive_message()
-        if event and 'response' in event.data:
-            response = event.data['response']
-    return response
+    try:
+        # Открываем HTML файл
+        driver.get(f"http://localhost:{PORT}")
+
+        # Выполняем JavaScript код для получения ответа
+        script = f"""
+        (async () => {{
+            const response = await puter.ai.chat("{prompt}", {{stream: true}});
+            let fullResponse = "";
+            for await (const part of response) {{
+                fullResponse += part?.text;
+            }}
+            return fullResponse;
+        }})();
+        """
+        response = driver.execute_script(script)
+        return response
+    finally:
+        driver.quit()
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик нажатий на кнопки."""
@@ -154,15 +157,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.job_queue.run_once(callback_timeout, 0, chat_id=chat_id, data=waiting_message.message_id)
 
     try:
-        # Отправляем запрос на HTML файл для получения ответа от Puter.js
-        global global_response
-        global_response = ""
-
-        # Открываем HTML файл в браузере и отправляем сообщение
-        open_html_file()
-        await asyncio.sleep(5)  # Даем время для получения ответа
-
-        # Используем JavaScript для получения ответа
+        # Используем Selenium для выполнения JavaScript кода
         response = await asyncio.get_event_loop().run_in_executor(None, get_puter_response, user_message)
 
         reply_text = response
