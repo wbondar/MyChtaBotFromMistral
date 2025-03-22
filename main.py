@@ -17,7 +17,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 HTML_FILE_PATH = "puter_ai.html"
 
 # Порт для HTTP сервера
-PORT = 8080
+PORT = 8000
 
 # Глобальная переменная для хранения ответа
 global_response = ""
@@ -54,7 +54,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Удаляем символы новой строки из сообщения
     user_message = user_message.replace('\n', ' ')
 
-    # Инициализируем user_data, если он не существует
+    # Убедимся, что user_data инициализирован
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
@@ -75,8 +75,17 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = context.job.chat_id
     message_id = context.job.data
 
+    # Убедимся, что user_data инициализирован
+    if context.user_data is None:
+        context.user_data = {}
+
     # Получаем сообщение пользователя из user_data
     user_message = context.user_data.get('user_message', {}).get(chat_id)
+
+    if not user_message:
+        logging.error("User message not found in user_data")
+        await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Ошибка: сообщение пользователя не найдено.")
+        return
 
     try:
         # Отправляем запрос на HTML файл для получения ответа от Puter.js
@@ -106,6 +115,12 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Получаем сообщение пользователя из user_data
     user_message = context.user_data.get('user_message', {}).get(chat_id)
+
+    if not user_message:
+        logging.error("User message not found in user_data")
+        await query.edit_message_text("Ошибка: сообщение пользователя не найдено.")
+        await query.answer()
+        return
 
     # Отправляем сообщение с обратным отсчетом
     waiting_message = await query.edit_message_text("🛠️⏰Готовлю для тебя ответ! Будь терпелив...")
