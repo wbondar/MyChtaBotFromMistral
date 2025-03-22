@@ -17,7 +17,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 HTML_FILE_PATH = "puter_ai.html"
 
 # Порт для HTTP сервера
-PORT = 8000
+PORT = 8080
 
 # Глобальная переменная для хранения ответа
 global_response = ""
