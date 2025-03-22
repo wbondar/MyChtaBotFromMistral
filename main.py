@@ -11,8 +11,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 GITHUB_API_KEY = os.getenv("GitHubAPIKey")
 
 client = OpenAI(
-    #base_url="https://models.inference.ai.azure.com",
-    base_url="https://openrouter.ai/api/v1",
+    base_url="https://models.inference.ai.azure.com",
+   # base_url="https://openrouter.ai/api/v1",
     api_key=GITHUB_API_KEY,
 )
 
