@@ -1,50 +1,43 @@
-import json
-import os
+import sqlite3
 from datetime import datetime
 import logging
 
-# Путь к файлу, где будут храниться данные о сообщениях
-COUNTER_FILE = 'message_counter.json'
+# Путь к базе данных
+DATABASE = 'message_counter.db'
 
-def check_permissions():
-    """Проверяет права доступа к файлу."""
-    if not os.access(COUNTER_FILE, os.W_OK):
-        logging.error(f"Нет прав на запись в файл {COUNTER_FILE}.")
-        return False
-    if not os.access(COUNTER_FILE, os.R_OK):
-        logging.error(f"Нет прав на чтение файла {COUNTER_FILE}.")
-        return False
-    return True
+def init_db():
+    """Инициализирует базу данных."""
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS counters (
+            user_id TEXT PRIMARY KEY,
+            date TEXT,
+            count INTEGER
+        )
+        ''')
+        conn.commit()
 
 def load_counters():
-    """Загружает счетчики сообщений из файла."""
-    if not check_permissions():
-        return {}
-    if not os.path.exists(COUNTER_FILE):
-        logging.info("Создание нового файла счетчиков.")
-        return {}
-    try:
-        with open(COUNTER_FILE, 'r') as file:
-            counters = json.load(file)
-            logging.info(f"Загружены счетчики: {counters}")
-            return counters
-    except json.JSONDecodeError as e:
-        logging.error(f"Ошибка при чтении файла счетчиков: {e}")
-        return {}
-    except IOError as e:
-        logging.error(f"Ошибка при открытии файла счетчиков: {e}")
-        return {}
+    """Загружает счетчики сообщений из базы данных."""
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT user_id, date, count FROM counters')
+        counters = {row[0]: {'date': row[1], 'count': row[2]} for row in cursor.fetchall()}
+        logging.info(f"Загружены счетчики: {counters}")
+        return counters
 
 def save_counters(counters):
-    """Сохраняет счетчики сообщений в файл."""
-    if not check_permissions():
-        return
-    try:
-        with open(COUNTER_FILE, 'w') as file:
-            json.dump(counters, file)
-            logging.info(f"Сохранены счетчики: {counters}")
-    except IOError as e:
-        logging.error(f"Ошибка при сохранении счетчиков в файл: {e}")
+    """Сохраняет счетчики сообщений в базу данных."""
+    with sqlite3.connect(DATABASE) as conn:
+        cursor = conn.cursor()
+        for user_id, data in counters.items():
+            cursor.execute('''
+            INSERT OR REPLACE INTO counters (user_id, date, count)
+            VALUES (?, ?, ?)
+            ''', (user_id, data['date'], data['count']))
+        conn.commit()
+        logging.info(f"Сохранены счетчики: {counters}")
 
 def update_message_counter(user_id):
     """Обновляет счетчик сообщений для пользователя."""
@@ -80,3 +73,6 @@ def reset_daily_counters():
         counters[user_id] = {'date': today, 'count': 0}
     logging.info("Все счетчики сброшены.")
     save_counters(counters)
+
+# Инициализация базы данных при первом запуске
+init_db()
