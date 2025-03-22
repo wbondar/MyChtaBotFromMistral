@@ -76,11 +76,11 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     message_id = context.job.data
 
     # Убедимся, что user_data инициализирован
-    if context.user_data is None:
-        context.user_data = {}
+    if 'user_message' not in context.user_data:
+        context.user_data['user_message'] = {}
 
     # Получаем сообщение пользователя из user_data
-    user_message = context.user_data.get('user_message', {}).get(chat_id)
+    user_message = context.user_data['user_message'].get(chat_id)
 
     if not user_message:
         logging.error("User message not found in user_data")
@@ -113,8 +113,12 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     chat_id = query.message.chat_id
 
+    # Убедимся, что user_data инициализирован
+    if 'user_message' not in context.user_data:
+        context.user_data['user_message'] = {}
+
     # Получаем сообщение пользователя из user_data
-    user_message = context.user_data.get('user_message', {}).get(chat_id)
+    user_message = context.user_data['user_message'].get(chat_id)
 
     if not user_message:
         logging.error("User message not found in user_data")
