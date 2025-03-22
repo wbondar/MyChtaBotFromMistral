@@ -26,18 +26,16 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     wget \
     gnupg \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем ChromeDriver
-RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_$(google-chrome --version | grep -oE '[0-9]+.[0-9]+.[0-9]+.[0-9]+' | cut -d '.' -f 1)) \
+RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) \
     && wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip \
     && unzip /tmp/chromedriver.zip -d /usr/local/bin/ \
     && rm /tmp/chromedriver.zip \
     && chmod +x /usr/local/bin/chromedriver
-
-# Копируем ChromeDriver из корня проекта в образ
-COPY chromedriver /usr/bin/chromedriver
-RUN chmod +x /usr/bin/chromedriver
 
 WORKDIR /app
 COPY . /app
@@ -46,7 +44,7 @@ COPY . /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Настройки окружения
-ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
+ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver \
     CHROME_BIN=/usr/bin/chromium \
     DISPLAY=:99 \
     LANG=C.UTF-8 \
