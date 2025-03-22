@@ -54,6 +54,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = user_message.replace('\n', ' ')
 
     # Убедимся, что user_data инициализирован
+    if context.user_data is None:
+        context.user_data = {}
+
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
@@ -75,6 +78,9 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     message_id = context.job.data
 
     # Убедимся, что user_data инициализирован
+    if context.user_data is None:
+        context.user_data = {}
+
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
@@ -138,6 +144,9 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     chat_id = query.message.chat_id
 
     # Убедимся, что user_data инициализирован
+    if context.user_data is None:
+        context.user_data = {}
+
     if 'user_message' not in context.user_data:
         context.user_data['user_message'] = {}
 
