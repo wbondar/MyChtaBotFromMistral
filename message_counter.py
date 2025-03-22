@@ -19,6 +19,9 @@ def load_counters():
     except json.JSONDecodeError as e:
         logging.error(f"Ошибка при чтении файла счетчиков: {e}")
         return {}
+    except IOError as e:
+        logging.error(f"Ошибка при открытии файла счетчиков: {e}")
+        return {}
 
 def save_counters(counters):
     """Сохраняет счетчики сообщений в файл."""
