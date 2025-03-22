@@ -11,16 +11,23 @@ def load_counters():
     if not os.path.exists(COUNTER_FILE):
         logging.info("Создание нового файла счетчиков.")
         return {}
-    with open(COUNTER_FILE, 'r') as file:
-        counters = json.load(file)
-        logging.info(f"Загружены счетчики: {counters}")
-        return counters
+    try:
+        with open(COUNTER_FILE, 'r') as file:
+            counters = json.load(file)
+            logging.info(f"Загружены счетчики: {counters}")
+            return counters
+    except json.JSONDecodeError as e:
+        logging.error(f"Ошибка при чтении файла счетчиков: {e}")
+        return {}
 
 def save_counters(counters):
     """Сохраняет счетчики сообщений в файл."""
-    with open(COUNTER_FILE, 'w') as file:
-        json.dump(counters, file)
-        logging.info(f"Сохранены счетчики: {counters}")
+    try:
+        with open(COUNTER_FILE, 'w') as file:
+            json.dump(counters, file)
+            logging.info(f"Сохранены счетчики: {counters}")
+    except IOError as e:
+        logging.error(f"Ошибка при сохранении счетчиков в файл: {e}")
 
 def update_message_counter(user_id):
     """Обновляет счетчик сообщений для пользователя."""
