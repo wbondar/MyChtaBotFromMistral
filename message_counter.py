@@ -6,8 +6,20 @@ import logging
 # Путь к файлу, где будут храниться данные о сообщениях
 COUNTER_FILE = 'message_counter.json'
 
+def check_permissions():
+    """Проверяет права доступа к файлу."""
+    if not os.access(COUNTER_FILE, os.W_OK):
+        logging.error(f"Нет прав на запись в файл {COUNTER_FILE}.")
+        return False
+    if not os.access(COUNTER_FILE, os.R_OK):
+        logging.error(f"Нет прав на чтение файла {COUNTER_FILE}.")
+        return False
+    return True
+
 def load_counters():
     """Загружает счетчики сообщений из файла."""
+    if not check_permissions():
+        return {}
     if not os.path.exists(COUNTER_FILE):
         logging.info("Создание нового файла счетчиков.")
         return {}
@@ -25,6 +37,8 @@ def load_counters():
 
 def save_counters(counters):
     """Сохраняет счетчики сообщений в файл."""
+    if not check_permissions():
+        return
     try:
         with open(COUNTER_FILE, 'w') as file:
             json.dump(counters, file)
