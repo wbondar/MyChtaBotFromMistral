@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     chromium \
     xvfb \
     tini \
-    fonts-liberation2 \
+    fonts-liberation \
     libatk-bridge2.0-0 \
     libgbm1 \
     libnss3 \
@@ -30,6 +30,10 @@ RUN apt-get update && apt-get install -y \
 COPY chromedriver /usr/bin/chromedriver
 RUN chmod +x /usr/bin/chromedriver
 
+# Проверяем версии (для диагностики)
+RUN echo "Chromium version:" && chromium --version
+RUN echo "ChromeDriver version:" && chromedriver --version
+
 WORKDIR /app
 COPY . /app
 
@@ -45,5 +49,8 @@ ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver \
     LC_ALL=C.UTF-8 \
     PATH=${PATH}:/usr/bin
 
+# Удаляем файл блокировки перед запуском Xvfb
+RUN rm -f /tmp/.X99-lock
+
 # Запуск приложения
-CMD ["tini", "--", "python", "main.py"]
+CMD ["tini", "--", "sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & python main.py"]
