@@ -75,7 +75,7 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
             ],
         )
 
-        reply_text = response.choices[0].message.content.strip()
+        reply_text = response['choices'][0]['message']['content'].strip()
         logging.info(f"Received reply from Together AI: {reply_text}")
 
         # Отправляем текст и голос
@@ -119,7 +119,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             ],
         )
 
-        reply_text = response.choices[0].message.content.strip()
+        reply_text = response['choices'][0]['message']['content'].strip()
         logging.info(f"Received reply from Together AI: {reply_text}")
 
         if query.data == "voice":
