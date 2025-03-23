@@ -5,14 +5,14 @@ from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
-import together  # Импортируем модуль together
+from together import Together  # Импортируем Together AI
 
 # Загружаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")  # API-ключ для Together AI
 
 # Инициализация Together AI
-together.api_key = TOGETHER_API_KEY  # Устанавливаем API-ключ
+together_client = Together(api_key=TOGETHER_API_KEY)  # Инициализация Together AI с API-ключом
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
@@ -67,15 +67,15 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     try:
         # Используем Together AI API для получения ответа от ИИ
-        response = together.ChatCompletion.create(
-            model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
+        response = together_client.chat.completions.create(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",  # Указываем модель
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
             ],
         )
 
-        reply_text = response['choices'][0]['message']['content'].strip()
+        reply_text = response.choices[0].message.content.strip()
         logging.info(f"Received reply from Together AI: {reply_text}")
 
         # Отправляем текст и голос
@@ -111,15 +111,15 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     try:
         # Используем Together AI API для получения ответа от ИИ
-        response = together.ChatCompletion.create(
-            model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
+        response = together_client.chat.completions.create(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",  # Указываем модель
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
             ],
         )
 
-        reply_text = response['choices'][0]['message']['content'].strip()
+        reply_text = response.choices[0].message.content.strip()
         logging.info(f"Received reply from Together AI: {reply_text}")
 
         if query.data == "voice":
