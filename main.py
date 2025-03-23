@@ -12,7 +12,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")  # API-ключ для Together AI
 
 # Инициализация Together AI
-together_client = together.Together(api_key=TOGETHER_API_KEY)  # Используем класс Together из модуля
+together.api_key = TOGETHER_API_KEY  # Устанавливаем API-ключ
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
@@ -67,7 +67,7 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     try:
         # Используем Together AI API для получения ответа от ИИ
-        response = together_client.chat.completions.create(
+        response = together.ChatCompletion.create(
             model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
@@ -111,7 +111,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     try:
         # Используем Together AI API для получения ответа от ИИ
-        response = together_client.chat.completions.create(
+        response = together.ChatCompletion.create(
             model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
