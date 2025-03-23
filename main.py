@@ -5,7 +5,8 @@ from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
-from together import Together  # Импортируем Together AI
+#from together import Together  # Импортируем Together AI
+import together
 
 # Загружаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
