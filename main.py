@@ -5,12 +5,14 @@ from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
-from together import Client  # Возможно, класс был переименован
+from together import Together  # Импортируем Together AI
 
+# Загружаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")  # API-ключ для Together AI
 
 # Инициализация Together AI
-together_client = Client()  # Используйте новый класс
+together_client = Together(api_key=TOGETHER_API_KEY)  # Инициализация Together AI с API-ключом
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
