@@ -5,15 +5,14 @@ from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
-#from together import together  # Импортируем together AI
-import together
+import together  # Импортируем модуль together
 
 # Загружаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-together_API_KEY = os.getenv("together_API_KEY")  # API-ключ для together AI
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")  # API-ключ для Together AI
 
-# Инициализация together AI
-together_client = together(api_key=together_API_KEY)  # Инициализация together AI с API-ключом
+# Инициализация Together AI
+together_client = together.Together(api_key=TOGETHER_API_KEY)  # Используем класс Together из модуля
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
@@ -67,7 +66,7 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = context.user_data['user_message'].get(chat_id)
 
     try:
-        # Используем together AI API для получения ответа от ИИ
+        # Используем Together AI API для получения ответа от ИИ
         response = together_client.chat.completions.create(
             model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
             messages=[
@@ -77,18 +76,18 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
         reply_text = response.choices[0].message.content.strip()
-        logging.info(f"Received reply from together AI: {reply_text}")
+        logging.info(f"Received reply from Together AI: {reply_text}")
 
         # Отправляем текст и голос
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=reply_text)
         await send_voice_message(context, chat_id, reply_text)
 
     except Exception as e:
-        logging.error(f"Ошибка при взаимодействии с together AI: {str(e)}")
+        logging.error(f"Ошибка при взаимодействии с Together AI: {str(e)}")
         if "RateLimitReached" in str(e):
             await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Превышен лимит запросов. Пожалуйста, попробуйте позже.")
         else:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с together AI: {str(e)}')
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с Together AI: {str(e)}')
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик нажатий на кнопки."""
@@ -111,7 +110,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.job_queue.run_once(callback_timeout, 0, chat_id=chat_id, data=waiting_message.message_id)
 
     try:
-        # Используем together AI API для получения ответа от ИИ
+        # Используем Together AI API для получения ответа от ИИ
         response = together_client.chat.completions.create(
             model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
             messages=[
@@ -121,7 +120,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
 
         reply_text = response.choices[0].message.content.strip()
-        logging.info(f"Received reply from together AI: {reply_text}")
+        logging.info(f"Received reply from Together AI: {reply_text}")
 
         if query.data == "voice":
             await context.bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
@@ -133,11 +132,11 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await send_voice_message(context, chat_id, reply_text)
 
     except Exception as e:
-        logging.error(f"Ошибка при взаимодействии с together AI: {str(e)}")
+        logging.error(f"Ошибка при взаимодействии с Together AI: {str(e)}")
         if "RateLimitReached" in str(e):
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Превышен лимит запросов. Пожалуйста, попробуйте позже.")
         else:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с together AI: {str(e)}')
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с Together AI: {str(e)}')
 
     await query.answer()
 
