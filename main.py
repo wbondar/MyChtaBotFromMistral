@@ -3,17 +3,14 @@ import logging
 import asyncio
 from telegram import Update, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
-from openai import OpenAI
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
+from together import Together  # Импортируем Together AI
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-GITHUB_API_KEY = os.getenv("GitHubAPIKey")
 
-client = OpenAI(
-    base_url="https://models.inference.ai.azure.com",
-    api_key=GITHUB_API_KEY,
-)
+# Инициализация Together AI
+together_client = Together()  # Инициализация Together AI (без API-ключа)
 
 async def send_message(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, parse_mode=None) -> None:
     """Вспомогательная функция для отправки сообщений."""
@@ -67,31 +64,28 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     user_message = context.user_data['user_message'].get(chat_id)
 
     try:
-        # Используем OpenAI API для получения ответа от ИИ
-        response = client.chat.completions.create(
+        # Используем Together AI API для получения ответа от ИИ
+        response = together_client.chat.completions.create(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
             ],
-            model="gpt-4o",
-            temperature=1.0,
-            top_p=1.0,
-            max_tokens=1000,
         )
 
         reply_text = response.choices[0].message.content.strip()
-        logging.info(f"Received reply from GitHub API: {reply_text}")
+        logging.info(f"Received reply from Together AI: {reply_text}")
 
         # Отправляем текст и голос
         await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=reply_text)
         await send_voice_message(context, chat_id, reply_text)
 
     except Exception as e:
-        logging.error(f"Ошибка при взаимодействии с GitHub API: {str(e)}")
+        logging.error(f"Ошибка при взаимодействии с Together AI: {str(e)}")
         if "RateLimitReached" in str(e):
             await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text="Превышен лимит запросов. Пожалуйста, попробуйте позже.")
         else:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с GitHub API: {str(e)}')
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f'Ошибка при взаимодействии с Together AI: {str(e)}')
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик нажатий на кнопки."""
@@ -114,20 +108,17 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     context.job_queue.run_once(callback_timeout, 0, chat_id=chat_id, data=waiting_message.message_id)
 
     try:
-        # Используем OpenAI API для получения ответа от ИИ
-        response = client.chat.completions.create(
+        # Используем Together AI API для получения ответа от ИИ
+        response = together_client.chat.completions.create(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
             ],
-            model="gpt-4o",
-            temperature=1.0,
-            top_p=1.0,
-            max_tokens=1000,
         )
 
         reply_text = response.choices[0].message.content.strip()
-        logging.info(f"Received reply from GitHub API: {reply_text}")
+        logging.info(f"Received reply from Together AI: {reply_text}")
 
         if query.data == "voice":
             await context.bot.delete_message(chat_id=chat_id, message_id=waiting_message.message_id)
@@ -139,11 +130,11 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await send_voice_message(context, chat_id, reply_text)
 
     except Exception as e:
-        logging.error(f"Ошибка при взаимодействии с GitHub API: {str(e)}")
+        logging.error(f"Ошибка при взаимодействии с Together AI: {str(e)}")
         if "RateLimitReached" in str(e):
             await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text="Превышен лимит запросов. Пожалуйста, попробуйте позже.")
         else:
-            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с GitHub API: {str(e)}')
+            await context.bot.edit_message_text(chat_id=chat_id, message_id=waiting_message.message_id, text=f'Ошибка при взаимодействии с Together AI: {str(e)}')
 
     await query.answer()
 
