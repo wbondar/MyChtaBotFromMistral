@@ -68,7 +68,7 @@ async def callback_timeout(context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         # Используем Together AI API для получения ответа от ИИ
         response = together_client.chat.completions.create(
-            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
@@ -112,7 +112,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         # Используем Together AI API для получения ответа от ИИ
         response = together_client.chat.completions.create(
-            model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",  # Указываем модель
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": user_message},
