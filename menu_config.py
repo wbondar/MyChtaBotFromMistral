@@ -17,24 +17,29 @@ from database import get_message_stats, get_user_stats
 
 MENU_STATE = range(1)
 
-async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    
-    if user.id != context.bot_data.get('ADMIN_ID', 0):
-        await update.message.reply_text("Извините, эта команда недоступна.")
-        return ConversationHandler.END
-    
-    # Удаляем все предыдущие меню в этом чате
+async def close_existing_menu(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
+    """Закрывает существующее меню, если оно есть."""
     if 'menu_messages' in context.chat_data:
         for msg_id in context.chat_data['menu_messages']:
             try:
                 await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
+                    chat_id=chat_id,
                     message_id=msg_id
                 )
             except Exception as e:
                 print(f"Ошибка при удалении меню: {e}")
         context.chat_data['menu_messages'] = []
+
+async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    chat_id = update.effective_chat.id
+    
+    if user.id != context.bot_data.get('ADMIN_ID', 0):
+        await update.message.reply_text("Извините, эта команда недоступна.")
+        return ConversationHandler.END
+    
+    # Закрываем существующее меню, если оно есть
+    await close_existing_menu(context, chat_id)
     
     # Получаем свежие данные статистики
     message_stats = get_message_stats()
@@ -76,21 +81,16 @@ async def close_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    # Удаляем сообщение меню
-    try:
-        await query.message.delete()
-    except Exception as e:
-        print(f"Ошибка при закрытии меню: {e}")
+    chat_id = query.message.chat_id
     
-    # Очищаем сохраненные ID сообщений
-    if 'menu_messages' in context.chat_data:
-        context.chat_data['menu_messages'] = []
+    # Закрываем меню
+    await close_existing_menu(context, chat_id)
     
     # Возвращаем кнопку MENU
     menu_button = KeyboardButton("📊 MENU")
     reply_markup = ReplyKeyboardMarkup([[menu_button]], resize_keyboard=True, one_time_keyboard=True)
     await context.bot.send_message(
-        chat_id=query.message.chat_id,
+        chat_id=chat_id,
         text="Меню закрыто",
         reply_markup=reply_markup
     )
@@ -99,18 +99,10 @@ async def close_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    chat_id = update.effective_chat.id
     
-    # Удаляем меню, если оно открыто
-    if 'menu_messages' in context.chat_data:
-        for msg_id in context.chat_data['menu_messages']:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка при удалении меню: {e}")
-        context.chat_data['menu_messages'] = []
+    # Закрываем меню
+    await close_existing_menu(context, chat_id)
     
     # Возвращаем ответ в зависимости от прав пользователя
     if user.id == context.bot_data.get('ADMIN_ID', 0):
