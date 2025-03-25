@@ -21,7 +21,7 @@ from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
 from together import Together
 from database import increment_message_count, add_user
-from menu_config import get_menu_handler, close_existing_menu
+from menu_config import get_menu_handler, show_menu, close_menu_and_show_new
 
 # Загружаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -70,7 +70,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     chat_id = update.message.chat_id
     
     if user_message == "📊 MENU" and user.id == ADMIN_ID:
-        return
+        # Проверяем, открыто ли уже меню
+        if 'menu_messages' in context.chat_data and context.chat_data['menu_messages']:
+            # Если меню уже открыто, закрываем его и открываем новое
+            return await close_menu_and_show_new(update, context)
+        else:
+            # Иначе просто открываем меню
+            return await show_menu(update, context)
     
     add_user(user.id, user.username, user.first_name, user.last_name)
     increment_message_count()
