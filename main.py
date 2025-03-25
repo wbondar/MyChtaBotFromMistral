@@ -21,7 +21,7 @@ from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
 from together import Together
 from database import increment_message_count, add_user
-from menu_config import get_menu_handler
+from menu_config import get_menu_handler, close_existing_menu
 
 # Загружаем переменные окружения
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
