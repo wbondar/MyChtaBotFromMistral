@@ -22,6 +22,16 @@ async def show_menu(update, context):
         await update.message.reply_text("Извините, эта команда недоступна.")
         return ConversationHandler.END
     
+    # Удаляем предыдущее меню, если оно есть
+    if 'menu_message_id' in context.user_data:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=context.user_data['menu_message_id']
+            )
+        except Exception:
+            pass
+    
     message_stats = get_message_stats()
     user_stats = get_user_stats()
     
@@ -42,16 +52,22 @@ async def show_menu(update, context):
     close_button = [[InlineKeyboardButton("❌ Закрыть", callback_data="close_menu")]]
     reply_markup = InlineKeyboardMarkup(close_button)
     
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         stats_text,
         reply_markup=reply_markup
     )
+    context.user_data['menu_message_id'] = msg.message_id  # Сохраняем ID сообщения
     
     return MENU_STATE
 
 async def close_menu(update, context):
     query = update.callback_query
     await query.answer()
+    
+    # Удаляем ID сообщения из user_data при закрытии меню
+    if 'menu_message_id' in context.user_data:
+        del context.user_data['menu_message_id']
+    
     await query.message.delete()
     
     menu_button = KeyboardButton("📊 MENU")
