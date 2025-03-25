@@ -17,20 +17,27 @@ from database import get_message_stats, get_user_stats
 
 MENU_STATE = range(1)
 
-async def close_existing_menu(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
-    """Закрывает существующее меню, если оно есть."""
-    if 'menu_messages' in context.chat_data:
-        for msg_id in context.chat_data['menu_messages']:
-            try:
-                await context.bot.delete_message(
-                    chat_id=chat_id,
-                    message_id=msg_id
-                )
-            except Exception as e:
-                print(f"Ошибка при удалении меню: {e}")
-        context.chat_data['menu_messages'] = []
+async def close_menu_and_show_new(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Закрывает текущее меню и показывает новое"""
+    chat_id = update.effective_chat.id
+    
+    # Закрываем текущее меню (имитируем нажатие кнопки "Закрыть")
+    if 'menu_messages' in context.chat_data and context.chat_data['menu_messages']:
+        try:
+            # Удаляем сообщение с меню
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=context.chat_data['menu_messages'][-1]
+            )
+            context.chat_data['menu_messages'] = []
+        except Exception as e:
+            print(f"Ошибка при закрытии меню: {e}")
+    
+    # Показываем новое меню
+    return await show_menu(update, context)
 
 async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показывает меню статистики"""
     user = update.effective_user
     chat_id = update.effective_chat.id
     
@@ -38,8 +45,10 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Извините, эта команда недоступна.")
         return ConversationHandler.END
     
-    # Закрываем существующее меню, если оно есть
-    await close_existing_menu(context, chat_id)
+    # Проверяем, открыто ли уже меню
+    if 'menu_messages' in context.chat_data and context.chat_data['menu_messages']:
+        # Если меню уже открыто, закрываем его и открываем новое
+        return await close_menu_and_show_new(update, context)
     
     # Получаем свежие данные статистики
     message_stats = get_message_stats()
@@ -78,13 +87,21 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return MENU_STATE
 
 async def close_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает нажатие кнопки Закрыть"""
     query = update.callback_query
     await query.answer()
     
     chat_id = query.message.chat_id
     
-    # Закрываем меню
-    await close_existing_menu(context, chat_id)
+    # Удаляем сообщение меню
+    try:
+        await query.message.delete()
+    except Exception as e:
+        print(f"Ошибка при закрытии меню: {e}")
+    
+    # Очищаем сохраненные ID сообщений
+    if 'menu_messages' in context.chat_data:
+        context.chat_data['menu_messages'] = []
     
     # Возвращаем кнопку MENU
     menu_button = KeyboardButton("📊 MENU")
@@ -98,11 +115,21 @@ async def close_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обрабатывает отмену"""
     user = update.effective_user
     chat_id = update.effective_chat.id
     
-    # Закрываем меню
-    await close_existing_menu(context, chat_id)
+    # Закрываем меню, если оно открыто
+    if 'menu_messages' in context.chat_data:
+        for msg_id in context.chat_data['menu_messages']:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=msg_id
+                )
+            except Exception as e:
+                print(f"Ошибка при удалении меню: {e}")
+        context.chat_data['menu_messages'] = []
     
     # Возвращаем ответ в зависимости от прав пользователя
     if user.id == context.bot_data.get('ADMIN_ID', 0):
