@@ -20,7 +20,7 @@ from telegram.ext import (
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
 from together import Together
-from database import increment_message_count, get_message_stats, add_user, get_user_stats
+from database import increment_message_count, add_user
 from menu_config import get_menu_handler
 
 # Загружаем переменные окружения
@@ -51,7 +51,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     add_user(user.id, user.username, user.first_name, user.last_name)
     
-    # Сохраняем ADMIN_ID в bot_data, который теперь будет сохраняться между перезапусками
     context.bot_data['ADMIN_ID'] = ADMIN_ID
     
     if user.id == ADMIN_ID:
@@ -70,7 +69,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = update.message.text
     chat_id = update.message.chat_id
     
-    # Пропускаем обработку кнопки MENU для админа
     if user_message == "📊 MENU" and user.id == ADMIN_ID:
         return
     
@@ -79,7 +77,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     user_message = user_message.replace('\n', ' ')
 
-    # Инициализация user_data, если не существует
     if context.user_data is None:
         context.user_data = {}
 
@@ -215,23 +212,20 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def main() -> None:
     """Основная функция бота."""
-    # Инициализация с persistence для сохранения bot_data между перезапусками
     application = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
-        .persistence(PersistenceInput(bot_data=True))
+        .persistence(PersistenceInput(bot_data=True, chat_data=True))
         .concurrent_updates(True)
         .build()
     )
 
-    # Добавляем обработчики
     application.add_handler(CommandHandler('start', start))
     application.add_handler(get_menu_handler(ADMIN_ID))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_handler(MessageHandler(filters.VOICE & ~filters.COMMAND, handle_voice))
     application.add_handler(CallbackQueryHandler(button))
 
-    # Запускаем бота
     await application.initialize()
     await application.start()
     await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
