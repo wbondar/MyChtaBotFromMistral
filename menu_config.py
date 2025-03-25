@@ -29,14 +29,16 @@ async def show_menu(update, context):
                 chat_id=update.effective_chat.id,
                 message_id=context.user_data['menu_message_id']
             )
-        except Exception:
-            pass
+            del context.user_data['menu_message_id']
+        except Exception as e:
+            print(f"Ошибка при удалении сообщения: {e}")
     
+    # Получаем обновленные данные статистики
     message_stats = get_message_stats()
     user_stats = get_user_stats()
     
     stats_text = (
-        f"📊 Статистика бота:\n\n"
+        f"📊 Статистика бота (обновлено):\n\n"
         f"• Total messages - {message_stats['total']} (шт.)\n"
         f"• Today messages - {message_stats['today']} (шт.)\n"
         f"• Users - {user_stats['count']} (шт.)\n\n"
@@ -56,7 +58,7 @@ async def show_menu(update, context):
         stats_text,
         reply_markup=reply_markup
     )
-    context.user_data['menu_message_id'] = msg.message_id  # Сохраняем ID сообщения
+    context.user_data['menu_message_id'] = msg.message_id  # Сохраняем ID нового сообщения
     
     return MENU_STATE
 
@@ -64,12 +66,17 @@ async def close_menu(update, context):
     query = update.callback_query
     await query.answer()
     
-    # Удаляем ID сообщения из user_data при закрытии меню
+    # Удаляем сообщение меню
+    try:
+        await query.message.delete()
+    except Exception as e:
+        print(f"Ошибка при удалении сообщения: {e}")
+    
+    # Очищаем сохраненный ID сообщения
     if 'menu_message_id' in context.user_data:
         del context.user_data['menu_message_id']
     
-    await query.message.delete()
-    
+    # Отправляем кнопку MENU обратно
     menu_button = KeyboardButton("📊 MENU")
     reply_markup = ReplyKeyboardMarkup([[menu_button]], resize_keyboard=True, one_time_keyboard=True)
     await context.bot.send_message(
@@ -82,6 +89,18 @@ async def close_menu(update, context):
 
 async def cancel(update, context):
     user = update.effective_user
+    
+    # Удаляем меню, если оно открыто
+    if 'menu_message_id' in context.user_data:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=context.user_data['menu_message_id']
+            )
+            del context.user_data['menu_message_id']
+        except Exception as e:
+            print(f"Ошибка при удалении сообщения: {e}")
+    
     if user.id == context.bot_data.get('ADMIN_ID', 0):
         menu_button = KeyboardButton("📊 MENU")
         reply_markup = ReplyKeyboardMarkup([[menu_button]], resize_keyboard=True, one_time_keyboard=True)
