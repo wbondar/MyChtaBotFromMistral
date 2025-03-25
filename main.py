@@ -19,8 +19,7 @@ from telegram.ext import (
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
 from together import Together
-from count_messages import increment_message_count
-from count_users import add_user
+from database import increment_message_count, get_message_stats, add_user, get_user_stats
 from menu_config import get_menu_handler
 
 # Загружаем переменные окружения
@@ -51,10 +50,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     add_user(user.id, user.username, user.first_name, user.last_name)
     
-    # Сохраняем ADMIN_ID в bot_data для доступа из menu_config
     context.bot_data['ADMIN_ID'] = ADMIN_ID
     
-    # Добавляем кнопку меню только для администратора
     if user.id == ADMIN_ID:
         menu_button = KeyboardButton("📊 MENU")
         reply_markup = ReplyKeyboardMarkup([[menu_button]], resize_keyboard=True, one_time_keyboard=True)
@@ -71,11 +68,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_message = update.message.text
     chat_id = update.message.chat_id
     
-    # Пропускаем обработку команды меню
     if user_message == "📊 MENU" and user.id == ADMIN_ID:
         return
     
-    # Добавляем пользователя и увеличиваем счетчик сообщений
     add_user(user.id, user.username, user.first_name, user.last_name)
     increment_message_count()
 
@@ -218,7 +213,6 @@ async def main() -> None:
     """Основная функция бота."""
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).concurrent_updates(True).build()
 
-    # Добавляем обработчики
     application.add_handler(CommandHandler('start', start))
     application.add_handler(get_menu_handler(ADMIN_ID))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
