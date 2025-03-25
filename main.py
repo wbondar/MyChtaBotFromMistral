@@ -15,7 +15,7 @@ from telegram.ext import (
     filters,
     ContextTypes,
     CallbackQueryHandler,
-    PersistenceInput
+    PicklePersistence
 )
 from text_to_speech import send_voice_message
 from speech_to_text import handle_voice_to_text
@@ -212,10 +212,16 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def main() -> None:
     """Основная функция бота."""
+    # Создаем директорию для сохранения состояния, если ее нет
+    os.makedirs("data", exist_ok=True)
+    
+    # Инициализируем persistence
+    persistence = PicklePersistence(filepath="data/persistence")
+    
     application = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
-        .persistence(PersistenceInput(bot_data=True, chat_data=True))
+        .persistence(persistence)
         .concurrent_updates(True)
         .build()
     )
