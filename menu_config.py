@@ -14,7 +14,6 @@ from telegram.ext import (
     ContextTypes
 )
 from database import get_message_stats, get_user_stats
-from menu_manager import MenuManager
 
 MENU_STATE = range(1)
 
@@ -26,7 +25,16 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
     
     # Удаляем все предыдущие меню в этом чате
-    await MenuManager.close_previous_menus(update, context)
+    if 'menu_messages' in context.chat_data:
+        for msg_id in context.chat_data['menu_messages']:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=msg_id
+                )
+            except Exception as e:
+                print(f"Ошибка при удалении меню: {e}")
+        context.chat_data['menu_messages'] = []
     
     # Получаем свежие данные статистики
     message_stats = get_message_stats()
@@ -57,8 +65,10 @@ async def show_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
     
-    # Сохраняем ID нового сообщения
-    await MenuManager.add_menu_message(update, context, msg.message_id)
+    # Сохраняем ID нового сообщения в chat_data
+    if 'menu_messages' not in context.chat_data:
+        context.chat_data['menu_messages'] = []
+    context.chat_data['menu_messages'].append(msg.message_id)
     
     return MENU_STATE
 
@@ -72,8 +82,9 @@ async def close_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"Ошибка при закрытии меню: {e}")
     
-    # Очищаем сохраненные ID сообщений для этого чата
-    await MenuManager.clear_menus_for_chat(update, context)
+    # Очищаем сохраненные ID сообщений
+    if 'menu_messages' in context.chat_data:
+        context.chat_data['menu_messages'] = []
     
     # Возвращаем кнопку MENU
     menu_button = KeyboardButton("📊 MENU")
@@ -89,9 +100,17 @@ async def close_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
-    # Удаляем все меню в этом чате
-    await MenuManager.close_previous_menus(update, context)
-    await MenuManager.clear_menus_for_chat(update, context)
+    # Удаляем меню, если оно открыто
+    if 'menu_messages' in context.chat_data:
+        for msg_id in context.chat_data['menu_messages']:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=msg_id
+                )
+            except Exception as e:
+                print(f"Ошибка при удалении меню: {e}")
+        context.chat_data['menu_messages'] = []
     
     # Возвращаем ответ в зависимости от прав пользователя
     if user.id == context.bot_data.get('ADMIN_ID', 0):
